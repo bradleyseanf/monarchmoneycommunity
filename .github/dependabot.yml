@@ -7,7 +7,7 @@ updates:
     schedule:
       interval: "weekly"
     reviewers:
-      - "hammem"
+      - "bradleyseanf"
     commit-message:
       prefix: "[pip] "
       include: "scope"
