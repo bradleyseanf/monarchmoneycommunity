@@ -13,13 +13,10 @@ jobs:
       - name: Lint
         uses: psf/black@stable
         with:
-          src: monarchmoneycommunity
+          src: .
           version: "24.8.0"
   unit_tests:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: monarchmoneycommunity
     steps:
       - uses: actions/checkout@v4
       - name: Install Python 3
