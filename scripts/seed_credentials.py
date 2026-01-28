@@ -28,12 +28,23 @@ async def seed():
     print("Monarch Credential Manager")
     print("--------------------------")
     
-    email = input("Monarch Email: ").strip()
+    # Try getting from env first
+    email = os.getenv("MM_EMAIL")
+    if not email:
+        email = input("Monarch Email: ").strip()
+    else:
+        print(f"Using email from env: {email}")
+
     if not email:
         print("Email is required.")
         return
 
-    password = input("Monarch Password: ").strip()
+    password = os.getenv("MM_PWD")
+    if not password:
+        password = input("Monarch Password: ").strip()
+    else:
+        print("Using password from env.")
+
     if not password:
         print("Password is required.")
         return

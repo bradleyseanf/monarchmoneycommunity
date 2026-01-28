@@ -9,7 +9,6 @@ sys.path.append(os.getcwd())
 
 from bridge_app.database import get_db
 from bridge_app.models import Credentials
-from bridge_app.utils.crypto import encrypt
 from monarchmoney import MonarchMoney, RequireMFAException
 
 load_dotenv()
@@ -20,6 +19,11 @@ async def interactive_login_flow():
     print("This script will log you in and save your session to the database.")
     
     mm = MonarchMoney()
+    
+    # OVERRIDE HEADERS to look like a real browser
+    # This helps bypass Cloudflare 525/403 blocks often caused by bot User-Agents
+    mm._headers["User-Agent"] = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    
     email = os.getenv("MM_EMAIL")
     password = os.getenv("MM_PWD")
 
@@ -38,6 +42,8 @@ async def interactive_login_flow():
             # interactive_login doesn't return email, but we can assume user knows it.
             
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         msg = str(e)
         if "429" in msg:
             print(msg)
