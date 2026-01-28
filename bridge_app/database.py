@@ -7,6 +7,7 @@ load_dotenv(override=True)
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./bridge.db")
 
+connect_args = {}
 import urllib.parse
 
 # Fix driver and sslmode for asyncpg
