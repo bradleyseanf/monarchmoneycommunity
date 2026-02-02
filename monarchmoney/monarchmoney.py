@@ -5,6 +5,7 @@ import getpass
 import json
 import mimetypes
 import os
+import sys
 import pickle
 import time
 from dataclasses import dataclass
@@ -139,7 +140,7 @@ class MonarchMoney(object):
     ) -> None:
         """Logs into a Monarch Money account."""
         if use_saved_session and os.path.exists(self._session_file):
-            print(f"Using saved session found at {self._session_file}")
+            print(f"Using saved session found at {self._session_file}", file=sys.stderr)
             self.load_session(self._session_file)
             return
 
