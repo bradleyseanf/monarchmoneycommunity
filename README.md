@@ -146,6 +146,7 @@ As of writing this README, the following methods are supported:
 - `request_accounts_refresh_and_wait` - requests a synchronization / refresh of all accounts linked to Monarch Money. This is a **blocking call** and will not return until the refresh is complete or no longer running.
 - `create_transaction` - creates a transaction with the given attributes
 - `update_transaction` - modifies one or more attributes for an existing transaction
+- `update_reoccuring` - updates recurring merchant settings (frequency, amount, date, active status)
 - `delete_transaction` - deletes a given transaction by the provided transaction id
 - `update_transaction_splits` - modifies how a transaction is split (or not)
 - `create_transaction_tag` - creates a tag for transactions
