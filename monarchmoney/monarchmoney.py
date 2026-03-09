@@ -1453,6 +1453,7 @@ class MonarchMoney(object):
         offset: Optional[int] = 0,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
+        updated_after: Optional[str] = None,
         search: str = "",
         category_ids: List[str] = [],
         account_ids: List[str] = [],
@@ -1472,6 +1473,7 @@ class MonarchMoney(object):
         :param offset: the number of transactions to skip (offset) before retrieving results.
         :param start_date: the earliest date to get transactions from, in "yyyy-mm-dd" format.
         :param end_date: the latest date to get transactions from, in "yyyy-mm-dd" format.
+        :param updated_after: the earliest updated date to get transactions from, in ISO 8601 format (e.g., "2023-01-01T00:00:00Z").
         :param search: a string to filter transactions. use empty string for all results.
         :param category_ids: a list of category ids to filter.
         :param account_ids: a list of account ids to filter.
@@ -1595,6 +1597,9 @@ class MonarchMoney(object):
             raise Exception(
                 "You must specify both a startDate and endDate, not just one of them."
             )
+
+        if updated_after:
+            variables["filters"]["updatedAfter"] = updated_after
 
         return await self.gql_call(
             operation="GetTransactionsList", graphql_query=query, variables=variables
