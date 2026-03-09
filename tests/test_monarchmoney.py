@@ -93,6 +93,53 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch.object(Client, "execute_async")
+    async def test_get_transactions_with_updated_after(self, mock_execute_async):
+        """
+        Test the get_transactions method with updated_after parameter.
+        """
+        mock_execute_async.return_value = TestMonarchMoney.loadTestData(
+            filename="get_transactions.json",
+        )
+        updated_after_timestamp = "2024-01-01T00:00:00Z"
+        result = await self.monarch_money.get_transactions(
+            limit=10, updated_after=updated_after_timestamp
+        )
+        mock_execute_async.assert_called_once()
+        self.assertIsNotNone(result, "Expected result to not be None")
+        self.assertEqual(result["allTransactions"]["totalCount"], 1)
+        self.assertEqual(len(result["allTransactions"]["results"]), 1)
+        self.assertEqual(
+            result["allTransactions"]["results"][0]["id"], "123456789"
+        )
+
+        # Verify that the updatedAfter filter was included in the call
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(kwargs["operation_name"], "GetTransactionsList")
+        self.assertIn("updatedAfter", kwargs["variable_values"]["filters"])
+        self.assertEqual(
+            kwargs["variable_values"]["filters"]["updatedAfter"],
+            updated_after_timestamp
+        )
+
+    @patch.object(Client, "execute_async")
+    async def test_get_transactions_basic(self, mock_execute_async):
+        """
+        Test the get_transactions method without filters.
+        """
+        mock_execute_async.return_value = TestMonarchMoney.loadTestData(
+            filename="get_transactions.json",
+        )
+        result = await self.monarch_money.get_transactions(limit=10)
+        mock_execute_async.assert_called_once()
+        self.assertIsNotNone(result, "Expected result to not be None")
+        self.assertEqual(result["allTransactions"]["totalCount"], 1)
+
+        # Verify that updatedAfter filter is not included when not specified
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(kwargs["operation_name"], "GetTransactionsList")
+        self.assertNotIn("updatedAfter", kwargs["variable_values"]["filters"])
+
+    @patch.object(Client, "execute_async")
     async def test_delete_account(self, mock_execute_async):
         """
         Test the delete_account method.

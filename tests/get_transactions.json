@@ -1,0 +1,48 @@
+{
+  "allTransactions": {
+    "totalCount": 1,
+    "results": [
+      {
+        "id": "123456789",
+        "amount": -50.0,
+        "pending": false,
+        "date": "2024-01-15",
+        "hideFromReports": false,
+        "plaidName": "Test Transaction",
+        "notes": "Test notes",
+        "isRecurring": false,
+        "reviewStatus": "approved",
+        "needsReview": false,
+        "attachments": [],
+        "isSplitTransaction": false,
+        "createdAt": "2024-01-15T10:00:00Z",
+        "updatedAt": "2024-01-15T10:00:00Z",
+        "category": {
+          "id": "987654321",
+          "name": "Groceries",
+          "__typename": "Category"
+        },
+        "merchant": {
+          "name": "Test Store",
+          "id": "111111111",
+          "transactionsCount": 5,
+          "__typename": "Merchant"
+        },
+        "account": {
+          "id": "222222222",
+          "displayName": "Checking Account",
+          "__typename": "Account"
+        },
+        "tags": [],
+        "__typename": "Transaction"
+      }
+    ],
+    "__typename": "TransactionConnection"
+  },
+  "transactionRules": [
+    {
+      "id": "333333333",
+      "__typename": "TransactionRule"
+    }
+  ]
+}
