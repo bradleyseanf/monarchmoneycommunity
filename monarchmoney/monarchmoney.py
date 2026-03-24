@@ -1445,6 +1445,7 @@ class MonarchMoney(object):
         is_recurring: Optional[bool] = None,
         imported_from_mint: Optional[bool] = None,
         synced_from_institution: Optional[bool] = None,
+        needs_review: Optional[bool] = None,
     ) -> Dict[str, Any]:
         """
         Gets transaction data from the account.
@@ -1464,6 +1465,7 @@ class MonarchMoney(object):
         :param is_recurring: a bool to filter for whether the transactions are recurring.
         :param imported_from_mint: a bool to filter for whether the transactions were imported from mint.
         :param synced_from_institution: a bool to filter for whether the transactions were synced from an institution.
+        :param needs_review: a bool to filter for whether the transactions need review.
         """
 
         query = gql(
@@ -1568,6 +1570,9 @@ class MonarchMoney(object):
 
         if synced_from_institution is not None:
             variables["filters"]["syncedFromInstitution"] = synced_from_institution
+
+        if needs_review is not None:
+            variables["filters"]["needsReview"] = needs_review
 
         if start_date and end_date:
             variables["filters"]["startDate"] = start_date
