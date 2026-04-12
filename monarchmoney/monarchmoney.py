@@ -2672,6 +2672,67 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def update_flex_rollover_settings(
+        self,
+        rollover_start_month: Optional[str] = None,
+        rollover_starting_balance: float = 0.0,
+        rollover_enabled: bool = True,
+        budget_system: str = "fixed_and_flex",
+    ) -> Dict[str, Any]:
+        """
+        Updates the Flex bucket rollover settings. Can be used to reset accumulated
+        rollover by pointing the start month to the current (or desired) month with
+        a starting balance of 0.
+
+        This resolves the common "Flex bucket has huge negative rollover" problem
+        where over-budget months accumulate for months or years. Resetting the
+        period creates a fresh rollover period starting from the given month.
+
+        :param rollover_start_month:
+            ISO date string for the new rollover period start (ex: "2026-04-01").
+            Defaults to start of current month.
+        :param rollover_starting_balance:
+            Balance to seed the new rollover period with. Default 0.0 (a fresh start).
+        :param rollover_enabled:
+            Whether flex rollover is enabled. Default True.
+        :param budget_system:
+            Budget system identifier. Default "fixed_and_flex".
+
+        Example (reset flex rollover to $0 starting this month):
+            await mm.update_flex_rollover_settings()
+        """
+        query = gql(
+            """
+            mutation Web_UpdateFlexibleGroupRolloverSettings($input: UpdateBudgetSettingsMutationInput!) {
+              updateBudgetSettings(input: $input) {
+                budgetRolloverPeriod {
+                  id
+                  startMonth
+                  startingBalance
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "rolloverEnabled": rollover_enabled,
+                "rolloverStartMonth": rollover_start_month
+                or self._get_start_of_current_month(),
+                "rolloverStartingBalance": rollover_starting_balance,
+                "budgetSystem": budget_system,
+            }
+        }
+
+        return await self.gql_call(
+            operation="Web_UpdateFlexibleGroupRolloverSettings",
+            variables=variables,
+            graphql_query=query,
+        )
+
     async def upload_account_balance_history(
         self,
         account_id: str,
