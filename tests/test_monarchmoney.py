@@ -257,6 +257,27 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             "Expected needsReview filter to be True",
         )
 
+    @patch.object(Client, "execute_async")
+    async def test_get_transactions_transaction_visibility_filter(self, mock_execute_async):
+        """
+        Test that transaction_visibility parameter is passed as transactionVisibility in GraphQL filters.
+        """
+        mock_execute_async.return_value = {
+            "allTransactions": {"results": [], "totalCount": 0},
+            "transactionRules": [],
+        }
+
+        await self.monarch_money.get_transactions(transaction_visibility="all_transactions")
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertIn("variable_values", kwargs)
+        self.assertEqual(
+            kwargs["variable_values"]["filters"]["transactionVisibility"],
+            "all_transactions",
+            "Expected transactionVisibility filter to be 'all_transactions'",
+        )
+
     @patch("builtins.input", return_value="")
     @patch("getpass.getpass", return_value="")
     async def test_interactive_login(self, _input_mock, _getpass_mock):
