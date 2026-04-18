@@ -258,7 +258,9 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch.object(Client, "execute_async")
-    async def test_get_transactions_transaction_visibility_filter(self, mock_execute_async):
+    async def test_get_transactions_transaction_visibility_filter(
+        self, mock_execute_async
+    ):
         """
         Test that transaction_visibility parameter is passed as transactionVisibility in GraphQL filters.
         """
@@ -267,7 +269,9 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             "transactionRules": [],
         }
 
-        await self.monarch_money.get_transactions(transaction_visibility="all_transactions")
+        await self.monarch_money.get_transactions(
+            transaction_visibility="all_transactions"
+        )
 
         mock_execute_async.assert_called_once()
         kwargs = mock_execute_async.call_args.kwargs

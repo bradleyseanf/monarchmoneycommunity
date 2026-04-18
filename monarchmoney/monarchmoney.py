@@ -1446,7 +1446,9 @@ class MonarchMoney(object):
         imported_from_mint: Optional[bool] = None,
         synced_from_institution: Optional[bool] = None,
         needs_review: Optional[bool] = None,
-        transaction_visibility: Optional[Literal["hidden_transactions_only","all_transactions"]] = None,
+        transaction_visibility: Optional[
+            Literal["hidden_transactions_only", "all_transactions"]
+        ] = None,
     ) -> Dict[str, Any]:
         """
         Gets transaction data from the account.
