@@ -1,17 +1,58 @@
 ## Type Of Change
 
 - [ ] Bug fix
-- [ ] New feature
+- [ ] New feature (new endpoint / method)
 - [ ] GraphQL endpoint/query update
 - [ ] Refactor
 - [ ] Documentation
 - [ ] Tests only
 
+
 ## Required For New Features Or Endpoint Changes
 
-If this PR adds, updates, or fixes a Monarch feature or endpoint, include a sanitized Monarch response and DO NOT include real data. The PR will not be approved if a Monarch Response is not supplied.
+If this PR adds or changes a Monarch endpoint or method, you must provide enough detail for the endpoint to be reproduced locally using browser DevTools.
 
-- [ ] I included a sanitized Monarch response/example
-- [ ] I removed or redacted any real personal or financial data
+Provide:
 
-## Explain your Change Below and how can it be reproduced in Monarch? (It will be tested locally before final merge)
+• The Monarch URL where the request occurs  
+• The request payload from the browser (sanitized)  
+• Any required headers if relevant (sanitized)  
+
+Do NOT include real financial or personal data.
+
+The PR will not be approved if this information is missing.
+
+- [ ] I included the Monarch URL where this request occurs
+- [ ] I included a sanitized request payload example
+- [ ] I redacted any personal or financial data
+
+
+## README Update Requirement (required for new features)
+
+If this PR adds a new endpoint or method (example: `get_accounts()`), you must include a commit updating the README with:
+
+• method name  
+• parameters  
+• example usage  
+
+- [ ] I updated the README to document the new method
+
+
+## Explain the Change
+
+Describe what was changed and how it can be reproduced in Monarch.
+Keep concise.
+```
+
+
+
+
+
+
+
+
+
+```
+
+
+## PICTURES OF BROWSER REQUEST PAYLOAD ARE APPRECIATED BUT NOT NECESSARY - IF DOING SO, MAKE SURE TO REDACT PERSONAL INFORMATION!!!
