@@ -278,6 +278,10 @@ As of writing this README, the following methods are supported:
       <td><code>update_flex_rollover_settings</code></td>
       <td>updates the Flex rollover settings, including the start month and starting balance</td>
     </tr>
+    <tr>
+      <td><code>reset_budget</code></td>
+      <td>resets the budget for a month back to its defaults</td>
+    </tr>
       <tr>
         <td><code>create_manual_account</code></td>
         <td>creates a new manual account</td>
