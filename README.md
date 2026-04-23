@@ -117,46 +117,181 @@ As of writing this README, the following methods are supported:
 
 ## Non-Mutating Methods
 
-- `get_accounts` - gets all the accounts linked to Monarch Money
-- `get_account_holdings` - gets all of the securities in a brokerage or similar type of account
-- `get_account_type_options` - all account types and their subtypes available in Monarch Money
-- `get_account_history` - gets all daily account history for the specified account
-- `get_institutions` - gets institutions linked to Monarch Money
-- `get_budgets` - all the budgets and the corresponding actual amounts
-- `get_credit_history` - gets credit score snapshots and Spinwheel user details
-- `get_subscription_details` - gets the Monarch Money account's status (e.g. paid or trial)
-- `get_recurring_transactions` - gets the future recurring transactions, including merchant and account details
-- `get_transactions_summary` - gets the transaction summary data from the transactions page
-- `get_transactions` - gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range
-- `get_transaction_categories` - gets all of the categories configured in the account
-- `get_transaction_category_groups` - all category groups configured in the account
-- `get_transaction_details` - gets detailed transaction data for a single transaction
-- `get_transaction_splits` - gets transaction splits for a single transaction
-- `get_transaction_tags` - gets all of the tags configured in the account
-- `get_cashflow` - gets cashflow data (by category, category group, merchant and a summary)
-- `get_cashflow_summary` - gets cashflow summary (income, expense, savings, savings rate)
-- `is_accounts_refresh_complete` - gets the status of a running account refresh
+<table>
+  <thead>
+    <tr>
+      <th width="280">Method</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>get_accounts</code></td>
+      <td>gets all the accounts linked to Monarch Money</td>
+    </tr>
+    <tr>
+      <td><code>get_account_holdings</code></td>
+      <td>gets all of the securities in a brokerage or similar type of account</td>
+    </tr>
+    <tr>
+      <td><code>get_account_type_options</code></td>
+      <td>all account types and their subtypes available in Monarch Money</td>
+    </tr>
+    <tr>
+      <td><code>get_account_history</code></td>
+      <td>gets all daily account history for the specified account</td>
+    </tr>
+    <tr>
+      <td><code>get_institutions</code></td>
+      <td>gets institutions linked to Monarch Money</td>
+    </tr>
+    <tr>
+      <td><code>get_budgets</code></td>
+      <td>all the budgets and the corresponding actual amounts</td>
+    </tr>
+    <tr>
+      <td><code>get_credit_history</code></td>
+      <td>gets credit score snapshots and Spinwheel user details</td>
+    </tr>
+    <tr>
+      <td><code>get_subscription_details</code></td>
+      <td>gets the Monarch Money account's status (e.g. paid or trial)</td>
+    </tr>
+    <tr>
+      <td><code>get_recurring_transactions</code></td>
+      <td>gets the future recurring transactions, including merchant and account details</td>
+    </tr>
+    <tr>
+      <td><code>get_transactions_summary</code></td>
+      <td>gets the transaction summary data from the transactions page</td>
+    </tr>
+    <tr>
+      <td><code>get_transactions</code></td>
+      <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
+    </tr>
+    <tr>
+      <td><code>find_duplicate_transactions</code></td>
+      <td>finds duplicate transaction groups using Plaid-reported fields</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_categories</code></td>
+      <td>gets all of the categories configured in the account</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_category_groups</code></td>
+      <td>all category groups configured in the account</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_details</code></td>
+      <td>gets detailed transaction data for a single transaction</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_splits</code></td>
+      <td>gets transaction splits for a single transaction</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_tags</code></td>
+      <td>gets all of the tags configured in the account</td>
+    </tr>
+    <tr>
+      <td><code>get_cashflow</code></td>
+      <td>gets cashflow data (by category, category group, merchant and a summary)</td>
+    </tr>
+    <tr>
+      <td><code>get_cashflow_summary</code></td>
+      <td>gets cashflow summary (income, expense, savings, savings rate)</td>
+    </tr>
+    <tr>
+      <td><code>is_accounts_refresh_complete</code></td>
+      <td>gets the status of a running account refresh</td>
+    </tr>
+  </tbody>
+</table>
 
 ## Mutating Methods
 
-- `delete_transaction_category` - deletes a category for transactions
-- `delete_transaction_categories` - deletes a list of transaction categories for transactions
-- `create_transaction_category` - creates a category for transactions
-- `request_accounts_refresh` - requests a synchronization / refresh of all accounts linked to Monarch Money. This is a **non-blocking call**. If the user wants to check on the status afterwards, they must call `is_accounts_refresh_complete`.
-- `request_accounts_refresh_and_wait` - requests a synchronization / refresh of all accounts linked to Monarch Money. This is a **blocking call** and will not return until the refresh is complete or no longer running.
-- `create_transaction` - creates a transaction with the given attributes
-- `update_transaction` - modifies one or more attributes for an existing transaction
-- `update_reoccuring` - updates recurring merchant settings (frequency, amount, date, active status)
-- `delete_transaction` - deletes a given transaction by the provided transaction id
-- `update_transaction_splits` - modifies how a transaction is split (or not)
-- `create_transaction_tag` - creates a tag for transactions
-- `set_transaction_tags` - sets the tags on a transaction
-- `set_budget_amount` - sets a budget's value to the given amount (date allowed, will only apply to month specified by default). A zero amount value will `unset` or `clear` the budget for the given category.
-- `create_manual_account` - creates a new manual account
-- `delete_account` - deletes an account by the provided account id
-- `update_account` - updates settings and/or balance of the provided account id
-- `upload_account_balance_history` - uploads account history csv file for a given account
-- `upload_attachment` - uploads a binary file for a given transaction by the provided transaction id
+<table>
+  <thead>
+    <tr>
+      <th width="280">Method</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>delete_transaction_category</code></td>
+      <td>deletes a category for transactions</td>
+    </tr>
+    <tr>
+      <td><code>delete_transaction_categories</code></td>
+      <td>deletes a list of transaction categories for transactions</td>
+    </tr>
+    <tr>
+      <td><code>create_transaction_category</code></td>
+      <td>creates a category for transactions</td>
+    </tr>
+    <tr>
+      <td><code>request_accounts_refresh</code></td>
+      <td>requests a synchronization / refresh of all accounts linked to Monarch Money. This is a <strong>non-blocking call</strong>. If the user wants to check on the status afterwards, they must call <code>is_accounts_refresh_complete</code>.</td>
+    </tr>
+    <tr>
+      <td><code>request_accounts_refresh_and_wait</code></td>
+      <td>requests a synchronization / refresh of all accounts linked to Monarch Money. This is a <strong>blocking call</strong> and will not return until the refresh is complete or no longer running.</td>
+    </tr>
+    <tr>
+      <td><code>create_transaction</code></td>
+      <td>creates a transaction with the given attributes</td>
+    </tr>
+    <tr>
+      <td><code>update_transaction</code></td>
+      <td>modifies one or more attributes for an existing transaction</td>
+    </tr>
+    <tr>
+      <td><code>update_reoccuring</code></td>
+      <td>updates recurring merchant settings (frequency, amount, date, active status)</td>
+    </tr>
+    <tr>
+      <td><code>delete_transaction</code></td>
+      <td>deletes a given transaction by the provided transaction id</td>
+    </tr>
+    <tr>
+      <td><code>update_transaction_splits</code></td>
+      <td>modifies how a transaction is split (or not)</td>
+    </tr>
+    <tr>
+      <td><code>create_transaction_tag</code></td>
+      <td>creates a tag for transactions</td>
+    </tr>
+    <tr>
+      <td><code>set_transaction_tags</code></td>
+      <td>sets the tags on a transaction</td>
+    </tr>
+    <tr>
+      <td><code>set_budget_amount</code></td>
+      <td>sets a budget's value to the given amount (date allowed, will only apply to month specified by default). A zero amount value will <code>unset</code> or <code>clear</code> the budget for the given category.</td>
+    </tr>
+    <tr>
+      <td><code>create_manual_account</code></td>
+      <td>creates a new manual account</td>
+    </tr>
+    <tr>
+      <td><code>delete_account</code></td>
+      <td>deletes an account by the provided account id</td>
+    </tr>
+    <tr>
+      <td><code>update_account</code></td>
+      <td>updates settings and/or balance of the provided account id</td>
+    </tr>
+    <tr>
+      <td><code>upload_account_balance_history</code></td>
+      <td>uploads account history csv file for a given account</td>
+    </tr>
+    <tr>
+      <td><code>upload_attachment</code></td>
+      <td>uploads a binary file for a given transaction by the provided transaction id</td>
+    </tr>
+  </tbody>
+</table>
 
 # Contributing
 
