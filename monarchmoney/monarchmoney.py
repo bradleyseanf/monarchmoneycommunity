@@ -2743,6 +2743,110 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def find_duplicate_transactions(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        account_ids: Optional[List[str]] = None,
+        page_size: int = 500,
+    ) -> List[Dict[str, Any]]:
+        """
+        Finds groups of duplicate transactions using the Plaid-reported fields.
+
+        Two transactions are considered duplicates when they share the SAME:
+          - date
+          - amount
+          - plaidName (Plaid's raw transaction description / reference string)
+          - account id
+
+        This is the correct dedup key because ``plaidName`` carries Plaid's
+        per-event reference. Two legitimate same-day, same-merchant, same-amount
+        charges (e.g. two separate Alaska Airlines seat fees) will carry
+        DIFFERENT reference numbers inside ``plaidName`` and will not be grouped.
+        Only rows that Plaid / Monarch wrote twice from a single upstream event
+        share an identical ``plaidName`` string.
+
+        Common causes of duplicates this method catches:
+          - Re-linking an Apple Card / Apple Cash / Apple Savings account (Monarch
+            re-inserts the full historical range as new rows — a known issue
+            documented in Monarch's own help center).
+          - Institution re-authentications after credential changes.
+          - Plaid write retries (microsecond-spaced sequential IDs).
+
+        :param start_date: Optional ISO date lower bound (inclusive).
+        :param end_date: Optional ISO date upper bound (inclusive).
+        :param account_ids: Optional account-id filter.
+        :param page_size: Pagination size when walking ``get_transactions``.
+
+        :returns: A list of duplicate groups. Each group is a dict of the form::
+
+            {
+                "date": "2025-09-19",
+                "amount": -54.03,
+                "plaidName": "Apple",
+                "account_id": "203496913710973596",
+                "account_name": "Apple Card",
+                "transactions": [<txn dict>, <txn dict>, ...],
+            }
+
+            The ``transactions`` list is sorted oldest-first by ``createdAt``, so
+            callers wanting to keep the original and delete the re-inserted copies
+            can simply retain ``transactions[0]`` and pass the rest to
+            :meth:`delete_transaction`.
+        """
+        all_txns: List[Dict[str, Any]] = []
+        offset = 0
+        while True:
+            result = await self.get_transactions(
+                limit=page_size,
+                offset=offset,
+                start_date=start_date,
+                end_date=end_date,
+                account_ids=account_ids or [],
+            )
+            batch = result.get("allTransactions", {}).get("results", []) or []
+            if not batch:
+                break
+            all_txns.extend(batch)
+            total = result.get("allTransactions", {}).get("totalCount") or 0
+            if len(all_txns) >= total:
+                break
+            offset += page_size
+
+        groups: Dict[tuple, List[Dict[str, Any]]] = {}
+        for t in all_txns:
+            plaid_name = (t.get("plaidName") or "").strip()
+            if not plaid_name:
+                continue
+            account = t.get("account") or {}
+            key = (
+                t.get("date"),
+                t.get("amount"),
+                plaid_name,
+                account.get("id"),
+            )
+            groups.setdefault(key, []).append(t)
+
+        duplicates: List[Dict[str, Any]] = []
+        for key, txns in groups.items():
+            if len(txns) < 2:
+                continue
+            txns_sorted = sorted(txns, key=lambda x: x.get("createdAt") or "")
+            duplicates.append(
+                {
+                    "date": key[0],
+                    "amount": key[1],
+                    "plaidName": key[2],
+                    "account_id": key[3],
+                    "account_name": (txns_sorted[0].get("account") or {}).get(
+                        "displayName"
+                    ),
+                    "transactions": txns_sorted,
+                }
+            )
+
+        return duplicates
+
     async def upload_account_balance_history(
         self,
         account_id: str,
