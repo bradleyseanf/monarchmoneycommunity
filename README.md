@@ -169,10 +169,14 @@ As of writing this README, the following methods are supported:
       <td><code>get_transactions</code></td>
       <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
     </tr>
-    <tr>
-      <td><code>get_transaction_categories</code></td>
-      <td>gets all of the categories configured in the account</td>
-    </tr>
+      <tr>
+        <td><code>find_duplicate_transactions</code></td>
+        <td>finds duplicate transaction groups using Plaid-reported fields</td>
+      </tr>
+      <tr>
+        <td><code>get_transaction_categories</code></td>
+        <td>gets all of the categories configured in the account</td>
+      </tr>
     <tr>
       <td><code>get_transaction_category_groups</code></td>
       <td>all category groups configured in the account</td>
