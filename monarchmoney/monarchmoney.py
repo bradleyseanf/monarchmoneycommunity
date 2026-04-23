@@ -2682,6 +2682,56 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def update_flexible_budget(
+        self,
+        amount: float,
+        start_date: Optional[str] = None,
+        apply_to_future: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Updates the Flexible budget amount.
+
+        This is the bucket-level budget for the "fixed_and_flex" budget system.
+        Unlike set_budget_amount() which targets a specific category, this method
+        sets the total Flex bucket allowance for a month.
+
+        :param amount:
+            The amount to set the Flexible budget to. A zero value will unset it.
+        :param start_date:
+            The beginning of the target month (ex: 2026-04-01). Defaults to the
+            start of the current month.
+        :param apply_to_future:
+            Whether to apply the new budget amount to all subsequent months.
+        """
+        query = gql(
+            """
+            mutation Common_UpdateFlexBudgetMutation($input: UpdateOrCreateFlexBudgetItemMutationInput!) {
+              updateOrCreateFlexBudgetItem(input: $input) {
+                budgetItem {
+                  id
+                  budgetAmount
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "startDate": start_date or self._get_start_of_current_month(),
+                "amount": amount,
+                "applyToFuture": apply_to_future,
+            }
+        }
+
+        return await self.gql_call(
+            operation="Common_UpdateFlexBudgetMutation",
+            variables=variables,
+            graphql_query=query,
+        )
+
     async def find_duplicate_transactions(
         self,
         start_date: Optional[str] = None,
