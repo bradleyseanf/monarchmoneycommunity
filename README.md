@@ -170,9 +170,13 @@ As of writing this README, the following methods are supported:
       <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
     </tr>
     <tr>
-      <td><code>get_transaction_categories</code></td>
-      <td>gets all of the categories configured in the account</td>
+      <td><code>find_duplicate_transactions</code></td>
+      <td>finds duplicate transaction groups using Plaid-reported fields</td>
     </tr>
+      <tr>
+        <td><code>get_transaction_categories</code></td>
+        <td>gets all of the categories configured in the account</td>
+      </tr>
     <tr>
       <td><code>get_transaction_category_groups</code></td>
       <td>all category groups configured in the account</td>
@@ -266,10 +270,10 @@ As of writing this README, the following methods are supported:
       <td><code>set_budget_amount</code></td>
       <td>sets a budget's value to the given amount (date allowed, will only apply to month specified by default). A zero amount value will <code>unset</code> or <code>clear</code> the budget for the given category.</td>
     </tr>
-      <tr>
-        <td><code>update_flexible_budget</code></td>
-        <td>updates the Flexible budget bucket amount for a month</td>
-      </tr>
+    <tr>
+      <td><code>update_flexible_budget</code></td>
+      <td>updates the Flexible budget bucket amount for a month</td>
+    </tr>
       <tr>
         <td><code>create_manual_account</code></td>
         <td>creates a new manual account</td>
