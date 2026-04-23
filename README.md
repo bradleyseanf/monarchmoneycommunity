@@ -274,6 +274,10 @@ As of writing this README, the following methods are supported:
       <td><code>update_flexible_budget</code></td>
       <td>updates the Flexible budget bucket amount for a month</td>
     </tr>
+    <tr>
+      <td><code>reset_budget</code></td>
+      <td>resets the budget for a month back to its defaults</td>
+    </tr>
       <tr>
         <td><code>create_manual_account</code></td>
         <td>creates a new manual account</td>

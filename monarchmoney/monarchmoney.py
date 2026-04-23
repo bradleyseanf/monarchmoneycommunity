@@ -2732,6 +2732,45 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def reset_budget(
+        self,
+        start_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Resets the budget for a specific month. Clears planned amounts back to
+        defaults/zero for the given month.
+
+        :param start_date:
+            The beginning of the month to reset (ex: "2026-04-01"). Defaults to
+            start of current month.
+        """
+        query = gql(
+            """
+            mutation Common_ResetBudget($input: ResetBudgetMutationInput!) {
+              resetBudget(input: $input) {
+                errors {
+                  message
+                  code
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "startDate": start_date or self._get_start_of_current_month(),
+            }
+        }
+
+        return await self.gql_call(
+            operation="Common_ResetBudget",
+            variables=variables,
+            graphql_query=query,
+        )
+
     async def find_duplicate_transactions(
         self,
         start_date: Optional[str] = None,
