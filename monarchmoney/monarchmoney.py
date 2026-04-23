@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from io import StringIO
 from datetime import datetime, date, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 
 import oathtool
 from aiohttp import ClientSession, FormData
@@ -1446,6 +1446,9 @@ class MonarchMoney(object):
         imported_from_mint: Optional[bool] = None,
         synced_from_institution: Optional[bool] = None,
         needs_review: Optional[bool] = None,
+        transaction_visibility: Optional[
+            Literal["hidden_transactions_only", "all_transactions"]
+        ] = None,
     ) -> Dict[str, Any]:
         """
         Gets transaction data from the account.
@@ -1466,6 +1469,10 @@ class MonarchMoney(object):
         :param imported_from_mint: a bool to filter for whether the transactions were imported from mint.
         :param synced_from_institution: a bool to filter for whether the transactions were synced from an institution.
         :param needs_review: a bool to filter for whether the transactions need review.
+        :param transaction_visibility: a string to set scope of transactions to return.
+          None (default) for only non-hidden transactions.
+          "hidden_transactions_only" for only hidden transactions.
+          "all_transactions" for hidden and non-hidden transactions.
         """
 
         query = gql(
@@ -1573,6 +1580,9 @@ class MonarchMoney(object):
 
         if needs_review is not None:
             variables["filters"]["needsReview"] = needs_review
+
+        if transaction_visibility is not None:
+            variables["filters"]["transactionVisibility"] = transaction_visibility
 
         if start_date and end_date:
             variables["filters"]["startDate"] = start_date
@@ -3455,6 +3465,7 @@ class MonarchMoney(object):
             url=MonarchMoneyEndpoints.getGraphQL(),
             headers=self._headers,
             timeout=self._timeout,
+            ssl=True,
         )
         return Client(
             transport=transport,

@@ -266,14 +266,14 @@ As of writing this README, the following methods are supported:
       <td><code>set_budget_amount</code></td>
       <td>sets a budget's value to the given amount (date allowed, will only apply to month specified by default). A zero amount value will <code>unset</code> or <code>clear</code> the budget for the given category.</td>
     </tr>
-    <tr>
-      <td><code>reset_budget</code></td>
-      <td>resets the budget for a month back to its defaults</td>
-    </tr>
-    <tr>
-      <td><code>create_manual_account</code></td>
-      <td>creates a new manual account</td>
-    </tr>
+      <tr>
+        <td><code>reset_budget</code></td>
+        <td>resets the budget for a month back to its defaults</td>
+      </tr>
+      <tr>
+        <td><code>create_manual_account</code></td>
+        <td>creates a new manual account</td>
+      </tr>
     <tr>
       <td><code>delete_account</code></td>
       <td>deletes an account by the provided account id</td>
@@ -314,3 +314,4 @@ Don't forget to use a password unique to your Monarch account and to enable mult
 
 - [mmoney-cli](https://github.com/theFong/mmoney-cli) - Access your MonarchMoney data via CLI
 - [monarchmoney-typed](https://github.com/jeeftor/monarchmoney-typed) - MonarchMoney Home Assistant Integration
+- [monarch-mcp-server](https://github.com/robcerda/monarch-mcp-server) - Model Context Protocol (MCP) server for integrating with Monarch Money.
