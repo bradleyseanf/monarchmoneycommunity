@@ -275,6 +275,10 @@ As of writing this README, the following methods are supported:
       <td>updates the Flexible budget bucket amount for a month</td>
     </tr>
     <tr>
+      <td><code>update_flex_rollover_settings</code></td>
+      <td>updates the Flex rollover settings, including the start month and starting balance</td>
+    </tr>
+    <tr>
       <td><code>reset_budget</code></td>
       <td>resets the budget for a month back to its defaults</td>
     </tr>
