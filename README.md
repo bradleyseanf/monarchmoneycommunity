@@ -169,14 +169,14 @@ As of writing this README, the following methods are supported:
       <td><code>get_transactions</code></td>
       <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
     </tr>
-    <tr>
-      <td><code>find_duplicate_transactions</code></td>
-      <td>finds duplicate transaction groups using Plaid-reported fields</td>
-    </tr>
-    <tr>
-      <td><code>get_transaction_categories</code></td>
-      <td>gets all of the categories configured in the account</td>
-    </tr>
+      <tr>
+        <td><code>find_duplicate_transactions</code></td>
+        <td>finds duplicate transaction groups using Plaid-reported fields</td>
+      </tr>
+      <tr>
+        <td><code>get_transaction_categories</code></td>
+        <td>gets all of the categories configured in the account</td>
+      </tr>
     <tr>
       <td><code>get_transaction_category_groups</code></td>
       <td>all category groups configured in the account</td>
@@ -314,3 +314,4 @@ Don't forget to use a password unique to your Monarch account and to enable mult
 
 - [mmoney-cli](https://github.com/theFong/mmoney-cli) - Access your MonarchMoney data via CLI
 - [monarchmoney-typed](https://github.com/jeeftor/monarchmoney-typed) - MonarchMoney Home Assistant Integration
+- [monarch-mcp-server](https://github.com/robcerda/monarch-mcp-server) - Model Context Protocol (MCP) server for integrating with Monarch Money.
