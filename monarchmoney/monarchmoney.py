@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from io import StringIO
 from datetime import datetime, date, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Literal
 
 import oathtool
 from aiohttp import ClientSession, FormData
@@ -1446,6 +1446,9 @@ class MonarchMoney(object):
         imported_from_mint: Optional[bool] = None,
         synced_from_institution: Optional[bool] = None,
         needs_review: Optional[bool] = None,
+        transaction_visibility: Optional[
+            Literal["hidden_transactions_only", "all_transactions"]
+        ] = None,
     ) -> Dict[str, Any]:
         """
         Gets transaction data from the account.
@@ -1466,6 +1469,10 @@ class MonarchMoney(object):
         :param imported_from_mint: a bool to filter for whether the transactions were imported from mint.
         :param synced_from_institution: a bool to filter for whether the transactions were synced from an institution.
         :param needs_review: a bool to filter for whether the transactions need review.
+        :param transaction_visibility: a string to set scope of transactions to return.
+          None (default) for only non-hidden transactions.
+          "hidden_transactions_only" for only hidden transactions.
+          "all_transactions" for hidden and non-hidden transactions.
         """
 
         query = gql(
@@ -1573,6 +1580,9 @@ class MonarchMoney(object):
 
         if needs_review is not None:
             variables["filters"]["needsReview"] = needs_review
+
+        if transaction_visibility is not None:
+            variables["filters"]["transactionVisibility"] = transaction_visibility
 
         if start_date and end_date:
             variables["filters"]["startDate"] = start_date
@@ -2672,6 +2682,260 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def update_flexible_budget(
+        self,
+        amount: float,
+        start_date: Optional[str] = None,
+        apply_to_future: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Updates the Flexible budget amount.
+
+        This is the bucket-level budget for the "fixed_and_flex" budget system.
+        Unlike set_budget_amount() which targets a specific category, this method
+        sets the total Flex bucket allowance for a month.
+
+        :param amount:
+            The amount to set the Flexible budget to. A zero value will unset it.
+        :param start_date:
+            The beginning of the target month (ex: 2026-04-01). Defaults to the
+            start of the current month.
+        :param apply_to_future:
+            Whether to apply the new budget amount to all subsequent months.
+        """
+        query = gql(
+            """
+            mutation Common_UpdateFlexBudgetMutation($input: UpdateOrCreateFlexBudgetItemMutationInput!) {
+              updateOrCreateFlexBudgetItem(input: $input) {
+                budgetItem {
+                  id
+                  budgetAmount
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "startDate": start_date or self._get_start_of_current_month(),
+                "amount": amount,
+                "applyToFuture": apply_to_future,
+            }
+        }
+
+        return await self.gql_call(
+            operation="Common_UpdateFlexBudgetMutation",
+            variables=variables,
+            graphql_query=query,
+        )
+
+    async def update_flex_rollover_settings(
+        self,
+        rollover_start_month: Optional[str] = None,
+        rollover_starting_balance: float = 0.0,
+        rollover_enabled: bool = True,
+        budget_system: str = "fixed_and_flex",
+    ) -> Dict[str, Any]:
+        """
+        Updates the Flex bucket rollover settings. Can be used to reset accumulated
+        rollover by pointing the start month to the current (or desired) month with
+        a starting balance of 0.
+
+        This resolves the common "Flex bucket has huge negative rollover" problem
+        where over-budget months accumulate for months or years. Resetting the
+        period creates a fresh rollover period starting from the given month.
+
+        :param rollover_start_month:
+            ISO date string for the new rollover period start (ex: "2026-04-01").
+            Defaults to start of current month.
+        :param rollover_starting_balance:
+            Balance to seed the new rollover period with. Default 0.0 (a fresh start).
+        :param rollover_enabled:
+            Whether flex rollover is enabled. Default True.
+        :param budget_system:
+            Budget system identifier. Default "fixed_and_flex".
+
+        Example (reset flex rollover to $0 starting this month):
+            await mm.update_flex_rollover_settings()
+        """
+        query = gql(
+            """
+            mutation Web_UpdateFlexibleGroupRolloverSettings($input: UpdateBudgetSettingsMutationInput!) {
+              updateBudgetSettings(input: $input) {
+                budgetRolloverPeriod {
+                  id
+                  startMonth
+                  startingBalance
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "rolloverEnabled": rollover_enabled,
+                "rolloverStartMonth": rollover_start_month
+                or self._get_start_of_current_month(),
+                "rolloverStartingBalance": rollover_starting_balance,
+                "budgetSystem": budget_system,
+            }
+        }
+
+        return await self.gql_call(
+            operation="Web_UpdateFlexibleGroupRolloverSettings",
+            variables=variables,
+            graphql_query=query,
+        )
+
+    async def reset_budget(
+        self,
+        start_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Resets the budget for a specific month. Clears planned amounts back to
+        defaults/zero for the given month.
+
+        :param start_date:
+            The beginning of the month to reset (ex: "2026-04-01"). Defaults to
+            start of current month.
+        """
+        query = gql(
+            """
+            mutation Common_ResetBudget($input: ResetBudgetMutationInput!) {
+              resetBudget(input: $input) {
+                errors {
+                  message
+                  code
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "startDate": start_date or self._get_start_of_current_month(),
+            }
+        }
+
+        return await self.gql_call(
+            operation="Common_ResetBudget",
+            variables=variables,
+            graphql_query=query,
+        )
+
+    async def find_duplicate_transactions(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        account_ids: Optional[List[str]] = None,
+        page_size: int = 500,
+    ) -> List[Dict[str, Any]]:
+        """
+        Finds groups of duplicate transactions using the Plaid-reported fields.
+
+        Two transactions are considered duplicates when they share the SAME:
+          - date
+          - amount
+          - plaidName (Plaid's raw transaction description / reference string)
+          - account id
+
+        This is the correct dedup key because ``plaidName`` carries Plaid's
+        per-event reference. Two legitimate same-day, same-merchant, same-amount
+        charges (e.g. two separate Alaska Airlines seat fees) will carry
+        DIFFERENT reference numbers inside ``plaidName`` and will not be grouped.
+        Only rows that Plaid / Monarch wrote twice from a single upstream event
+        share an identical ``plaidName`` string.
+
+        Common causes of duplicates this method catches:
+          - Re-linking an Apple Card / Apple Cash / Apple Savings account (Monarch
+            re-inserts the full historical range as new rows — a known issue
+            documented in Monarch's own help center).
+          - Institution re-authentications after credential changes.
+          - Plaid write retries (microsecond-spaced sequential IDs).
+
+        :param start_date: Optional ISO date lower bound (inclusive).
+        :param end_date: Optional ISO date upper bound (inclusive).
+        :param account_ids: Optional account-id filter.
+        :param page_size: Pagination size when walking ``get_transactions``.
+
+        :returns: A list of duplicate groups. Each group is a dict of the form::
+
+            {
+                "date": "2025-09-19",
+                "amount": -54.03,
+                "plaidName": "Apple",
+                "account_id": "203496913710973596",
+                "account_name": "Apple Card",
+                "transactions": [<txn dict>, <txn dict>, ...],
+            }
+
+            The ``transactions`` list is sorted oldest-first by ``createdAt``, so
+            callers wanting to keep the original and delete the re-inserted copies
+            can simply retain ``transactions[0]`` and pass the rest to
+            :meth:`delete_transaction`.
+        """
+        all_txns: List[Dict[str, Any]] = []
+        offset = 0
+        while True:
+            result = await self.get_transactions(
+                limit=page_size,
+                offset=offset,
+                start_date=start_date,
+                end_date=end_date,
+                account_ids=account_ids or [],
+            )
+            batch = result.get("allTransactions", {}).get("results", []) or []
+            if not batch:
+                break
+            all_txns.extend(batch)
+            total = result.get("allTransactions", {}).get("totalCount") or 0
+            if len(all_txns) >= total:
+                break
+            offset += page_size
+
+        groups: Dict[tuple, List[Dict[str, Any]]] = {}
+        for t in all_txns:
+            plaid_name = (t.get("plaidName") or "").strip()
+            if not plaid_name:
+                continue
+            account = t.get("account") or {}
+            key = (
+                t.get("date"),
+                t.get("amount"),
+                plaid_name,
+                account.get("id"),
+            )
+            groups.setdefault(key, []).append(t)
+
+        duplicates: List[Dict[str, Any]] = []
+        for key, txns in groups.items():
+            if len(txns) < 2:
+                continue
+            txns_sorted = sorted(txns, key=lambda x: x.get("createdAt") or "")
+            duplicates.append(
+                {
+                    "date": key[0],
+                    "amount": key[1],
+                    "plaidName": key[2],
+                    "account_id": key[3],
+                    "account_name": (txns_sorted[0].get("account") or {}).get(
+                        "displayName"
+                    ),
+                    "transactions": txns_sorted,
+                }
+            )
+
+        return duplicates
+
     async def upload_account_balance_history(
         self,
         account_id: str,
@@ -3416,6 +3680,7 @@ class MonarchMoney(object):
             url=MonarchMoneyEndpoints.getGraphQL(),
             headers=self._headers,
             timeout=self._timeout,
+            ssl=True,
         )
         return Client(
             transport=transport,

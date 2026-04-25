@@ -170,9 +170,13 @@ As of writing this README, the following methods are supported:
       <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
     </tr>
     <tr>
-      <td><code>get_transaction_categories</code></td>
-      <td>gets all of the categories configured in the account</td>
+      <td><code>find_duplicate_transactions</code></td>
+      <td>finds duplicate transaction groups using Plaid-reported fields</td>
     </tr>
+      <tr>
+        <td><code>get_transaction_categories</code></td>
+        <td>gets all of the categories configured in the account</td>
+      </tr>
     <tr>
       <td><code>get_transaction_category_groups</code></td>
       <td>all category groups configured in the account</td>
@@ -267,9 +271,21 @@ As of writing this README, the following methods are supported:
       <td>sets a budget's value to the given amount (date allowed, will only apply to month specified by default). A zero amount value will <code>unset</code> or <code>clear</code> the budget for the given category.</td>
     </tr>
     <tr>
-      <td><code>create_manual_account</code></td>
-      <td>creates a new manual account</td>
+      <td><code>update_flexible_budget</code></td>
+      <td>updates the Flexible budget bucket amount for a month</td>
     </tr>
+    <tr>
+      <td><code>update_flex_rollover_settings</code></td>
+      <td>updates the Flex rollover settings, including the start month and starting balance</td>
+    </tr>
+    <tr>
+      <td><code>reset_budget</code></td>
+      <td>resets the budget for a month back to its defaults</td>
+    </tr>
+      <tr>
+        <td><code>create_manual_account</code></td>
+        <td>creates a new manual account</td>
+      </tr>
     <tr>
       <td><code>delete_account</code></td>
       <td>deletes an account by the provided account id</td>
