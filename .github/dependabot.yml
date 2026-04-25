@@ -1,16 +1,15 @@
-# Ensures proactive management of this library's dependencies
-
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/" # Location of package manifests
+    directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
+    target-branch: "dev"
     reviewers:
       - "bradleyseanf"
     commit-message:
       prefix: "[pip] "
       include: "scope"
-    lables:
+    labels:
       - "pip"
       - "dependencies"
