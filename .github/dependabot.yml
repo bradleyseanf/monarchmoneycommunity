@@ -10,6 +10,3 @@ updates:
     commit-message:
       prefix: "[pip] "
       include: "scope"
-    labels:
-      - "pip"
-      - "dependencies"
