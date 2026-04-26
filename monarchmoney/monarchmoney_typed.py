@@ -54,7 +54,9 @@ class MonarchAccount:
         self.id = str(data.get("id", ""))
         self.logo_url = data.get("logoUrl") or institution.get("logo")
         self.name = data.get("displayName") or data.get("name") or ""
-        self.balance = _parse_float(data.get("currentBalance", data.get("displayBalance")))
+        self.balance = _parse_float(
+            data.get("currentBalance", data.get("displayBalance"))
+        )
         self.type = account_type.get("name", "")
         self.type_name = account_type.get("display", self.type)
         self.subtype = account_subtype.get("name", "")
@@ -63,7 +65,9 @@ class MonarchAccount:
             credential.get("dataProvider") or data.get("dataProvider") or "Manual entry"
         )
         self.last_update = _parse_datetime(
-            data.get("updatedAt") or data.get("displayLastUpdatedAt") or data.get("createdAt")
+            data.get("updatedAt")
+            or data.get("displayLastUpdatedAt")
+            or data.get("createdAt")
             or datetime.fromtimestamp(0, tz=timezone.utc).isoformat()
         )
         self.date_created = _parse_datetime(
@@ -71,8 +75,12 @@ class MonarchAccount:
             or data.get("updatedAt")
             or datetime.fromtimestamp(0, tz=timezone.utc).isoformat()
         )
-        self.institution_url = _normalize_url(institution.get("url") or data.get("institutionUrl"))
-        self.institution_name = institution.get("name") or data.get("institutionName") or "Manual entry"
+        self.institution_url = _normalize_url(
+            institution.get("url") or data.get("institutionUrl")
+        )
+        self.institution_name = (
+            institution.get("name") or data.get("institutionName") or "Manual entry"
+        )
         self.holdings = None
 
     @property
@@ -101,7 +109,11 @@ class MonarchCashflowSummary:
 
 class MonarchSubscription:
     def __init__(self, data: Dict[str, Any]) -> None:
-        subscription = data.get("subscription") if isinstance(data.get("subscription"), dict) else data
+        subscription = (
+            data.get("subscription")
+            if isinstance(data.get("subscription"), dict)
+            else data
+        )
         self.id = str(subscription.get("id", ""))
         self.payment_source = subscription.get("paymentSource", "")
         self.referral_code = subscription.get("referralCode", "")
@@ -124,7 +136,9 @@ class MonarchHolding:
             self.ticker = security.get("ticker", "")
             self.name = security.get("name") or first_holding.get("name", "")
             self.type = security.get("type") or first_holding.get("type")
-            self.type_name = security.get("typeDisplay") or first_holding.get("typeDisplay", "")
+            self.type_name = security.get("typeDisplay") or first_holding.get(
+                "typeDisplay", ""
+            )
             self.price = _parse_float(security.get("currentPrice"))
             self.price_date = security.get("currentPriceUpdatedAt")
         else:
@@ -147,7 +161,9 @@ class MonarchHoldings:
     ) -> None:
         self.holdings: List[MonarchHolding] = []
         self.total_value = 0.0
-        self._account = account_or_id if isinstance(account_or_id, MonarchAccount) else None
+        self._account = (
+            account_or_id if isinstance(account_or_id, MonarchAccount) else None
+        )
         self._account_id_str = (
             str(account_or_id.id)
             if isinstance(account_or_id, MonarchAccount)
@@ -161,7 +177,9 @@ class MonarchHoldings:
             self.total_value += holding.total_value
 
         for holding in self.holdings:
-            holding.percentage = (holding.total_value / self.total_value) if self.total_value else 0.0
+            holding.percentage = (
+                holding.total_value / self.total_value if self.total_value else 0.0
+            )
 
     def to_json(self) -> str:
         return json.dumps(
@@ -190,11 +208,15 @@ class TypedMonarchMoney(MonarchMoney):
     ) -> None:
         super().__init__(session_file, timeout, token)
 
-    async def get_accounts(self, *, with_holdings: bool = False) -> List[MonarchAccount]:
+    async def get_accounts(
+        self, *, with_holdings: bool = False
+    ) -> List[MonarchAccount]:
         data = await super().get_accounts()
         accounts = [MonarchAccount(account) for account in data.get("accounts", [])]
         if with_holdings and accounts:
-            holdings = await asyncio.gather(*(self.get_account_holdings(account) for account in accounts))
+            holdings = await asyncio.gather(
+                *(self.get_account_holdings(account) for account in accounts)
+            )
             for account, holding in zip(accounts, holdings):
                 account.holdings = holding
         return accounts
@@ -211,7 +233,9 @@ class TypedMonarchMoney(MonarchMoney):
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> MonarchCashflowSummary:
-        return MonarchCashflowSummary(await super().get_cashflow_summary(limit, start_date, end_date))
+        return MonarchCashflowSummary(
+            await super().get_cashflow_summary(limit, start_date, end_date)
+        )
 
     async def get_subscription_details(self) -> MonarchSubscription:
         return MonarchSubscription(await super().get_subscription_details())
