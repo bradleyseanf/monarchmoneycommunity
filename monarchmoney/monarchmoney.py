@@ -2492,8 +2492,9 @@ class MonarchMoney(object):
         - needs_review: This parameter is only needed when the user wants to update the
             existing transaction's needs-review value.  If passed, the parameter is cast to
             Booleans to avoid API issues.
-        - reviewed: This parameter is only needed when the user wants to mark the transaction
-            as reviewed or unreviewed.  If passed, the parameter is cast to Boolean.
+        - reviewed: This parameter is only needed when the user wants to mark a transaction
+            as reviewed. If passed, the parameter is cast to Boolean. To unreview a
+            transaction, use needs_review=True instead.
         - notes: This parameter is only needed when the user wants to change
             the existing note.  An empty string can be passed to clear out existing notes.
 
