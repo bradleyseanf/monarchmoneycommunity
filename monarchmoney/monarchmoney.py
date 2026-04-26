@@ -2460,6 +2460,7 @@ class MonarchMoney(object):
         date: Optional[str] = None,
         hide_from_reports: Optional[bool] = None,
         needs_review: Optional[bool] = None,
+        reviewed: Optional[bool] = None,
         notes: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
@@ -2491,6 +2492,9 @@ class MonarchMoney(object):
         - needs_review: This parameter is only needed when the user wants to update the
             existing transaction's needs-review value.  If passed, the parameter is cast to
             Booleans to avoid API issues.
+        - reviewed: This parameter is only needed when the user wants to mark a transaction
+            as reviewed. If passed, the parameter is cast to Boolean. To remove the reviewed
+            status from a transaction, use needs_review=True.
         - notes: This parameter is only needed when the user wants to change
             the existing note.  An empty string can be passed to clear out existing notes.
 
@@ -2513,6 +2517,7 @@ class MonarchMoney(object):
                 date="2023-11-09",
                 hide_from_reports=False,
                 needs_review="ThisWillBeCastToTrue",
+                reviewed=True,
                 notes=f'Updated On: {datetime.now().strftime("%m/%d/%Y %H:%M:%S")}',
             )
         """
@@ -2597,6 +2602,8 @@ class MonarchMoney(object):
             variables["input"].update({"hideFromReports": bool(hide_from_reports)})
         if needs_review is not None:
             variables["input"].update({"needsReview": bool(needs_review)})
+        if reviewed is not None:
+            variables["input"].update({"reviewed": bool(reviewed)})
 
         # We want an empty string to clear the goal and notes parameters but the values should not
         # be cleared if the parameter isn't passed
