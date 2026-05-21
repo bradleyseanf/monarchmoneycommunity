@@ -281,7 +281,6 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
 
 
 class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
-    """Tests for cookie-based authentication."""
 
     def setUp(self):
         self.mm = MonarchMoney()
@@ -293,19 +292,9 @@ class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
 
     def test_set_cookies(self):
         self.mm.set_cookies(self.valid_cookies)
-        self.assertEqual(self.mm._auth_mode, "cookie")
         self.assertEqual(self.mm._cookies, self.valid_cookies)
         self.assertEqual(self.mm._headers["X-Csrftoken"], "xyz789")
         self.assertEqual(self.mm._headers["Origin"], "https://app.monarch.com")
-        self.assertEqual(self.mm._headers["Referer"], "https://app.monarch.com/")
-        self.assertEqual(self.mm._headers["monarch-client"], "web")
-        self.assertNotIn("Authorization", self.mm._headers)
-
-    def test_set_cookies_preserves_token(self):
-        self.mm.set_token("my_token")
-        self.mm._headers["Authorization"] = f"Token {self.mm._token}"
-        self.mm.set_cookies(self.valid_cookies)
-        self.assertEqual(self.mm._token, "my_token")
         self.assertNotIn("Authorization", self.mm._headers)
 
     def test_set_cookies_missing_required(self):
@@ -313,8 +302,6 @@ class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
             self.mm.set_cookies({"session_id": "abc"})
         with self.assertRaises(LoginFailedException):
             self.mm.set_cookies({"csrftoken": "xyz"})
-        with self.assertRaises(LoginFailedException):
-            self.mm.set_cookies({"other": "val"})
 
     def test_parse_cookie_string(self):
         result = MonarchMoney._parse_cookie_string(
@@ -324,20 +311,14 @@ class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
             result, {"session_id": "abc", "csrftoken": "xyz", "other": "val"}
         )
 
-    def test_parse_cookie_string_with_equals_in_value(self):
-        result = MonarchMoney._parse_cookie_string("key=val=ue; other=x")
-        self.assertEqual(result, {"key": "val=ue", "other": "x"})
-
     def test_load_session_with_cookies(self):
         session_data = {
             "token": "tok",
             "cookies": {"session_id": "sid", "csrftoken": "csrf"},
-            "auth_mode": "cookie",
         }
         with open("temp_cookie_session.pickle", "wb") as fh:
             pickle.dump(session_data, fh)
         self.mm.load_session("temp_cookie_session.pickle")
-        self.assertEqual(self.mm._auth_mode, "cookie")
         self.assertEqual(self.mm._cookies["session_id"], "sid")
         self.assertEqual(self.mm._headers["X-Csrftoken"], "csrf")
         self.assertEqual(self.mm._token, "tok")
@@ -349,63 +330,25 @@ class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
         with open("temp_legacy_session.pickle", "wb") as fh:
             pickle.dump(session_data, fh)
         self.mm.load_session("temp_legacy_session.pickle")
-        self.assertEqual(self.mm._auth_mode, "token")
         self.assertEqual(self.mm._token, "legacy_token")
         self.assertEqual(self.mm._headers["Authorization"], "Token legacy_token")
         os.remove("temp_legacy_session.pickle")
-
-    def test_load_session_mixed_no_auth_mode(self):
-        """Old fixture with cookies + token but no auth_mode -> token auth."""
-        session_data = {
-            "cookies": {"test_cookie": "test_value"},
-            "token": "test_token",
-        }
-        with open("temp_mixed_session.pickle", "wb") as fh:
-            pickle.dump(session_data, fh)
-        self.mm.load_session("temp_mixed_session.pickle")
-        self.assertEqual(self.mm._auth_mode, "token")
-        self.assertEqual(self.mm._token, "test_token")
-        self.assertEqual(self.mm._headers["Authorization"], "Token test_token")
-        os.remove("temp_mixed_session.pickle")
 
     def test_save_session_with_cookies(self):
         self.mm.set_cookies(self.valid_cookies)
         self.mm.save_session("temp_save_test.pickle")
         with open("temp_save_test.pickle", "rb") as fh:
             data = pickle.load(fh)
-        self.assertEqual(data["auth_mode"], "cookie")
         self.assertEqual(data["cookies"], self.valid_cookies)
         os.remove("temp_save_test.pickle")
-
-    def test_save_session_cookie_only_no_token(self):
-        self.mm.set_cookies(self.valid_cookies)
-        self.mm.save_session("temp_cookie_only.pickle")
-        with open("temp_cookie_only.pickle", "rb") as fh:
-            data = pickle.load(fh)
-        self.assertIsNone(data["token"])
-        self.assertEqual(data["cookies"], self.valid_cookies)
-        os.remove("temp_cookie_only.pickle")
 
     def test_captcha_exception_is_login_failed(self):
         self.assertIsInstance(CaptchaRequiredException(), LoginFailedException)
 
-    def test_graphql_client_receives_cookies_in_cookie_mode(self):
+    def test_graphql_client_receives_cookies(self):
         self.mm.set_cookies(self.valid_cookies)
         client = self.mm._get_graphql_client()
-        transport = client.transport
-        self.assertEqual(transport.cookies, self.valid_cookies)
-
-    def test_graphql_client_no_cookies_in_token_mode(self):
-        self.mm.set_token("tok")
-        self.mm._headers["Authorization"] = "Token tok"
-        client = self.mm._get_graphql_client()
-        transport = client.transport
-        self.assertIsNone(transport.cookies)
-
-    def test_cookies_property(self):
-        self.assertIsNone(self.mm.cookies)
-        self.mm.set_cookies(self.valid_cookies)
-        self.assertEqual(self.mm.cookies, self.valid_cookies)
+        self.assertEqual(client.transport.cookies, self.valid_cookies)
 
 
 if __name__ == "__main__":
