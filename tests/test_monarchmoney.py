@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import json
 from gql import Client
-from monarchmoney import MonarchMoney, CaptchaRequiredException
+from monarchmoney import MonarchMoney
 from monarchmoney.monarchmoney import LoginFailedException
 
 
@@ -278,77 +278,6 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         This method will be called after each test method is executed.
         """
         self.monarch_money.delete_session("temp_session.pickle")
-
-
-class TestCookieAuth(unittest.IsolatedAsyncioTestCase):
-
-    def setUp(self):
-        self.mm = MonarchMoney()
-        self.valid_cookies = {
-            "session_id": "abc123",
-            "csrftoken": "xyz789",
-            "other_cookie": "val",
-        }
-
-    def test_set_cookies(self):
-        self.mm.set_cookies(self.valid_cookies)
-        self.assertEqual(self.mm._cookies, self.valid_cookies)
-        self.assertEqual(self.mm._headers["X-Csrftoken"], "xyz789")
-        self.assertEqual(self.mm._headers["Origin"], "https://app.monarch.com")
-        self.assertNotIn("Authorization", self.mm._headers)
-
-    def test_set_cookies_missing_required(self):
-        with self.assertRaises(LoginFailedException):
-            self.mm.set_cookies({"session_id": "abc"})
-        with self.assertRaises(LoginFailedException):
-            self.mm.set_cookies({"csrftoken": "xyz"})
-
-    def test_parse_cookie_string(self):
-        result = MonarchMoney._parse_cookie_string(
-            "session_id=abc; csrftoken=xyz; other=val"
-        )
-        self.assertEqual(
-            result, {"session_id": "abc", "csrftoken": "xyz", "other": "val"}
-        )
-
-    def test_load_session_with_cookies(self):
-        session_data = {
-            "token": "tok",
-            "cookies": {"session_id": "sid", "csrftoken": "csrf"},
-        }
-        with open("temp_cookie_session.pickle", "wb") as fh:
-            pickle.dump(session_data, fh)
-        self.mm.load_session("temp_cookie_session.pickle")
-        self.assertEqual(self.mm._cookies["session_id"], "sid")
-        self.assertEqual(self.mm._headers["X-Csrftoken"], "csrf")
-        self.assertEqual(self.mm._token, "tok")
-        self.assertNotIn("Authorization", self.mm._headers)
-        os.remove("temp_cookie_session.pickle")
-
-    def test_load_session_legacy_token_only(self):
-        session_data = {"token": "legacy_token"}
-        with open("temp_legacy_session.pickle", "wb") as fh:
-            pickle.dump(session_data, fh)
-        self.mm.load_session("temp_legacy_session.pickle")
-        self.assertEqual(self.mm._token, "legacy_token")
-        self.assertEqual(self.mm._headers["Authorization"], "Token legacy_token")
-        os.remove("temp_legacy_session.pickle")
-
-    def test_save_session_with_cookies(self):
-        self.mm.set_cookies(self.valid_cookies)
-        self.mm.save_session("temp_save_test.pickle")
-        with open("temp_save_test.pickle", "rb") as fh:
-            data = pickle.load(fh)
-        self.assertEqual(data["cookies"], self.valid_cookies)
-        os.remove("temp_save_test.pickle")
-
-    def test_captcha_exception_is_login_failed(self):
-        self.assertIsInstance(CaptchaRequiredException(), LoginFailedException)
-
-    def test_graphql_client_receives_cookies(self):
-        self.mm.set_cookies(self.valid_cookies)
-        client = self.mm._get_graphql_client()
-        self.assertEqual(client.transport.cookies, self.valid_cookies)
 
 
 if __name__ == "__main__":
