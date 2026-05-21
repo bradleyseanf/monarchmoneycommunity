@@ -111,6 +111,35 @@ mm.load_session()
 await mm.get_accounts()
 ```
 
+# Cookie-Based Authentication
+
+If programmatic login is blocked by CAPTCHA (raises `CaptchaRequiredException`), you can authenticate using cookies from your browser session:
+
+1. Log in to https://app.monarch.com in your browser
+2. Open DevTools (F12) → Network tab
+3. Click any request to `api.monarch.com`
+4. Find the `Cookie` request header (under the "Headers" tab) and copy its full value
+5. Pass it to `login_with_cookies()`:
+
+```python
+from monarchmoney import MonarchMoney
+
+mm = MonarchMoney()
+await mm.login_with_cookies("session_id=abc123; csrftoken=xyz789; ...")
+```
+
+The session is saved automatically. On subsequent runs, `login()` with `use_saved_session=True` (the default) will load the saved cookie-based session.
+
+You can also set cookies directly without string parsing:
+
+```python
+mm = MonarchMoney()
+mm.set_cookies({
+    "session_id": "abc123",
+    "csrftoken": "xyz789",
+})
+```
+
 # Accessing Data
 
 As of writing this README, the following methods are supported:

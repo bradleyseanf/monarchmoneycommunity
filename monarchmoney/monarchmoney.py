@@ -28,6 +28,15 @@ SESSION_DIR = ".mm"
 SESSION_FILE = f"{SESSION_DIR}/mm_session.pickle"
 DEFAULT_TIMEOUT_SECS = 300
 
+REQUIRED_COOKIES = ("session_id", "csrftoken")
+
+MONARCH_COOKIE_HEADERS = {
+    "Origin": "https://app.monarch.com",
+    "Referer": "https://app.monarch.com/",
+    "monarch-client": "web",
+    "monarch-client-version": "2025.05",
+}
+
 
 @dataclass
 class BalanceHistoryRow:
@@ -69,6 +78,16 @@ class RequestFailedException(Exception):
     pass
 
 
+class CaptchaRequiredException(LoginFailedException):
+    """Raised when programmatic login is blocked by CAPTCHA.
+
+    Users should authenticate with browser cookies instead,
+    using login_with_cookies() or set_cookies().
+    """
+
+    pass
+
+
 class MonarchMoney(object):
     def __init__(
         self,
@@ -87,6 +106,8 @@ class MonarchMoney(object):
 
         self._session_file = session_file
         self._token = token
+        self._cookies: Optional[Dict[str, str]] = None
+        self._auth_mode: str = "token"
         self._timeout = timeout
 
     @staticmethod
@@ -114,6 +135,84 @@ class MonarchMoney(object):
 
     def set_token(self, token: str) -> None:
         self._token = token
+
+    def set_cookies(self, cookies: Dict[str, str]) -> None:
+        """Configure cookie-based authentication.
+
+        Required cookies: session_id, csrftoken.
+        When set, cookie auth takes precedence over token auth for requests.
+        The existing token (if any) is preserved as fallback state.
+        """
+        missing = [k for k in REQUIRED_COOKIES if k not in cookies]
+        if missing:
+            raise LoginFailedException(
+                f"Missing required cookies: {', '.join(missing)}. "
+                "Ensure you copy both session_id and csrftoken from your browser."
+            )
+        self._cookies = cookies
+        self._auth_mode = "cookie"
+        self._headers.pop("Authorization", None)
+        self._headers.update(MONARCH_COOKIE_HEADERS)
+        self._headers["X-Csrftoken"] = cookies.get("csrftoken", "")
+
+    @property
+    def cookies(self) -> Optional[Dict[str, str]]:
+        return self._cookies
+
+    async def login_with_cookies(
+        self,
+        cookie_string: str,
+        save_session: bool = True,
+        verify: bool = True,
+    ) -> None:
+        """Authenticate using a browser Cookie header string.
+
+        Use this when programmatic login is blocked by CAPTCHA.
+
+        Steps to get the cookie string:
+        1. Log in to https://app.monarch.com in your browser
+        2. Open DevTools -> Network tab
+        3. Click any request to api.monarch.com
+        4. Find the 'Cookie' request header (under the 'Headers' tab)
+           and copy its full value
+        5. Pass it to this method
+
+        Args:
+            cookie_string: Raw Cookie header value from browser DevTools.
+            save_session: Whether to save the session for later use.
+            verify: Whether to make a test API call to verify the cookies work.
+        """
+        cookies = self._parse_cookie_string(cookie_string)
+        self.set_cookies(cookies)
+
+        if verify:
+            try:
+                await self.get_accounts()
+            except Exception as e:
+                self._cookies = None
+                self._auth_mode = "token"
+                if self._token:
+                    self._headers["Authorization"] = f"Token {self._token}"
+                raise LoginFailedException(
+                    f"Cookie verification failed: {e}. "
+                    "The cookies may be expired. Try copying fresh cookies "
+                    "from your browser."
+                )
+
+        if save_session:
+            self.save_session(self._session_file)
+
+    @staticmethod
+    def _parse_cookie_string(cookie_string: str) -> Dict[str, str]:
+        """Parse a browser Cookie header string into a dict."""
+        cookies: Dict[str, str] = {}
+        for pair in cookie_string.split(";"):
+            pair = pair.strip()
+            if "=" not in pair:
+                continue
+            key, _, value = pair.partition("=")
+            cookies[key.strip()] = value.strip()
+        return cookies
 
     async def interactive_login(
         self, use_saved_session: bool = True, save_session: bool = True
@@ -172,7 +271,12 @@ class MonarchMoney(object):
         headers.pop("Accept", None)
         headers.pop("Content-Type", None)
 
-        async with ClientSession(headers=headers) as session:
+        cookies = (
+            self._cookies
+            if self._auth_mode == "cookie" and "monarch.com" in url
+            else None
+        )
+        async with ClientSession(headers=headers, cookies=cookies) as session:
             resp = await session.post(url, data=data)
             if resp.status != 200:
                 raise RequestFailedException(f"HTTP Code {resp.status}: {resp.reason}")
@@ -3511,39 +3615,71 @@ class MonarchMoney(object):
 
     def save_session(self, filename: Optional[str] = None) -> None:
         """
-        Saves the auth token needed to access a Monarch Money account.
-        Never persists short-lived features JWTs (1-hour).
+        Saves the auth credentials needed to access a Monarch Money account.
+        Supports both token-based and cookie-based sessions.
         """
         if filename is None:
             filename = self._session_file
         filename = os.path.abspath(filename)
 
-        if not self._token:
-            raise LoginFailedException("No token set; cannot save session.")
+        if not self._token and not self._cookies:
+            raise LoginFailedException("No credentials set; cannot save session.")
 
         # Guard: features/Ably JWTs have two dots and expire hourly.
-        if isinstance(self._token, str) and self._token.count(".") == 2:
+        if self._token and self._looks_like_jwt(self._token):
             raise LoginFailedException(
                 "Refusing to save a JWT-style token to session; this looks like the 1-hour "
                 "features token, not the long-lived login session token."
             )
 
-        session_data = {"token": self._token}
+        session_data: Dict[str, Any] = {
+            "token": self._token,
+            "auth_mode": self._auth_mode,
+        }
+        if self._cookies:
+            session_data["cookies"] = self._cookies
+
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         with open(filename, "wb") as fh:
             pickle.dump(session_data, fh)
 
     def load_session(self, filename: Optional[str] = None) -> None:
         """
-        Loads pre-existing auth token from a Python pickle file.
+        Loads pre-existing auth credentials from a Python pickle file.
+
+        Supports both legacy token-only sessions and newer cookie-based sessions.
+        Old session files without an auth_mode key default to token auth.
         """
         if filename is None:
             filename = self._session_file
 
         with open(filename, "rb") as fh:
             data = pickle.load(fh)
+
+        auth_mode = data.get("auth_mode", "token")
+
+        # Store cookies if present (even in token mode, for future use)
+        saved_cookies = data.get("cookies")
+        if isinstance(saved_cookies, dict):
+            self._cookies = saved_cookies
+
+        if auth_mode == "cookie" and isinstance(saved_cookies, dict):
+            has_required = all(k in saved_cookies for k in REQUIRED_COOKIES)
+            if has_required:
+                self.set_cookies(saved_cookies)
+                if data.get("token"):
+                    self._token = data["token"]
+                return
+
+        # Fall back to legacy token auth
+        if data.get("token"):
             self.set_token(data["token"])
             self._headers["Authorization"] = f"Token {self._token}"
+        else:
+            raise LoginFailedException(
+                "Session file contains no valid credentials. "
+                "Re-login or use login_with_cookies()."
+            )
 
     def delete_session(self, filename: Optional[str] = None) -> None:
         """
@@ -3576,10 +3712,20 @@ class MonarchMoney(object):
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
                 if resp.status == 403:
-                    # Server demands MFA
+                    try:
+                        body = await resp.json()
+                        if body.get("error_code") == "CAPTCHA_REQUIRED":
+                            raise CaptchaRequiredException(
+                                "Programmatic login is blocked by CAPTCHA. "
+                                "Use login_with_cookies() to authenticate with "
+                                "browser cookies instead."
+                            )
+                    except CaptchaRequiredException:
+                        raise
+                    except Exception:
+                        pass
                     raise RequireMFAException("Multi-Factor Auth Required")
                 if resp.status != 200:
-                    # Surface server message if present
                     try:
                         response = await resp.json()
                         if "detail" in response:
@@ -3587,6 +3733,12 @@ class MonarchMoney(object):
                         if "error_code" in response:
                             raise LoginFailedException(response["error_code"])
                         raise LoginFailedException(f"Unrecognized error: {response}")
+                    except (
+                        LoginFailedException,
+                        RequireMFAException,
+                        CaptchaRequiredException,
+                    ):
+                        raise
                     except Exception:
                         raise LoginFailedException(
                             f"HTTP Code {resp.status}: {resp.reason}"
@@ -3596,15 +3748,24 @@ class MonarchMoney(object):
                 tok = response.get("token")
                 tokexp = response.get("tokenExpiration")
 
+                # Capture cookies from login response for potential future use
+                response_cookies = {k: v.value for k, v in resp.cookies.items()}
+                has_required_cookies = all(
+                    k in response_cookies for k in REQUIRED_COOKIES
+                )
+                if has_required_cookies:
+                    self._cookies = response_cookies
+
                 if not tok:
+                    if has_required_cookies:
+                        self.set_cookies(response_cookies)
+                        return
                     raise LoginFailedException("Login succeeded but no token returned.")
-                # Reject 1-hour features/Ably JWTs (they look like header.payload.signature)
-                if isinstance(tok, str) and tok.count(".") == 2:
+                if self._looks_like_jwt(tok):
                     raise LoginFailedException(
                         "Received a JWT-style token (likely 1-hour features token). "
                         "Refusing to save; ensure we are using /auth/login/ token."
                     )
-                # Long-lived browser-style sessions come with tokenExpiration == null
                 if tokexp not in (None, "null"):
                     raise LoginFailedException(
                         f"Short-lived token returned (tokenExpiration={tokexp}). "
@@ -3638,6 +3799,20 @@ class MonarchMoney(object):
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
+                if resp.status == 403:
+                    try:
+                        body = await resp.json()
+                        if body.get("error_code") == "CAPTCHA_REQUIRED":
+                            raise CaptchaRequiredException(
+                                "Programmatic login is blocked by CAPTCHA. "
+                                "Use login_with_cookies() to authenticate with "
+                                "browser cookies instead."
+                            )
+                    except CaptchaRequiredException:
+                        raise
+                    except Exception:
+                        pass
+                    raise RequireMFAException("Multi-Factor Auth Required")
                 if resp.status != 200:
                     try:
                         response = await resp.json()
@@ -3646,6 +3821,12 @@ class MonarchMoney(object):
                         if "error_code" in response:
                             raise LoginFailedException(response["error_code"])
                         raise LoginFailedException(f"Unrecognized error: {response}")
+                    except (
+                        LoginFailedException,
+                        RequireMFAException,
+                        CaptchaRequiredException,
+                    ):
+                        raise
                     except Exception:
                         raise LoginFailedException(
                             f"HTTP Code {resp.status}: {resp.reason}"
@@ -3655,17 +3836,25 @@ class MonarchMoney(object):
                 tok = response.get("token")
                 tokexp = response.get("tokenExpiration")
 
+                response_cookies = {k: v.value for k, v in resp.cookies.items()}
+                has_required_cookies = all(
+                    k in response_cookies for k in REQUIRED_COOKIES
+                )
+                if has_required_cookies:
+                    self._cookies = response_cookies
+
                 if not tok:
+                    if has_required_cookies:
+                        self.set_cookies(response_cookies)
+                        return
                     raise LoginFailedException("MFA succeeded but no token returned.")
 
-                # Reject 1-hour features/Ably JWTs (look like header.payload.signature)
-                if isinstance(tok, str) and tok.count(".") == 2:
+                if self._looks_like_jwt(tok):
                     raise LoginFailedException(
                         "Received a JWT-style token (likely 1-hour features token). "
                         "Refusing to save; ensure this is the /auth/login/ token."
                     )
 
-                # Must be long-lived (tokenExpiration == null)
                 if tokexp not in (None, "null"):
                     raise LoginFailedException(
                         f"MFA returned short-lived token (tokenExpiration={tokexp}). "
@@ -3683,9 +3872,11 @@ class MonarchMoney(object):
             raise LoginFailedException(
                 "Make sure you call login() first or provide a session token!"
             )
+        cookies = self._cookies if self._auth_mode == "cookie" else None
         transport = AIOHTTPTransport(
             url=MonarchMoneyEndpoints.getGraphQL(),
             headers=self._headers,
+            cookies=cookies,
             timeout=self._timeout,
             ssl=True,
         )
