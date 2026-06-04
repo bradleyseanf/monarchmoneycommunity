@@ -101,6 +101,7 @@ class MonarchMoney(object):
         self._session_file = session_file
         self._token = token
         self._cookies: Optional[Dict[str, str]] = None
+        self._auth_mode: str = "token"
         self._timeout = timeout
 
     @staticmethod
@@ -137,6 +138,7 @@ class MonarchMoney(object):
                 "Ensure you copy both session_id and csrftoken from your browser."
             )
         self._cookies = cookies
+        self._auth_mode = "cookie"
         self._headers.pop("Authorization", None)
         self._headers.update(MONARCH_COOKIE_HEADERS)
         self._headers["X-Csrftoken"] = cookies["csrftoken"]
@@ -3576,7 +3578,10 @@ class MonarchMoney(object):
                 "features token, not the long-lived login session token."
             )
 
-        session_data: Dict[str, Any] = {"token": self._token}
+        session_data: Dict[str, Any] = {
+            "token": self._token,
+            "auth_mode": self._auth_mode,
+        }
         if self._cookies:
             session_data["cookies"] = self._cookies
 
@@ -3592,14 +3597,19 @@ class MonarchMoney(object):
         with open(filename, "rb") as fh:
             data = pickle.load(fh)
 
+        auth_mode = data.get("auth_mode", "token")
+
         saved_cookies = data.get("cookies")
-        if isinstance(saved_cookies, dict) and all(
-            k in saved_cookies for k in REQUIRED_COOKIES
-        ):
-            self.set_cookies(saved_cookies)
-            if data.get("token"):
-                self._token = data["token"]
-            return
+        if isinstance(saved_cookies, dict):
+            self._cookies = saved_cookies
+
+        if auth_mode == "cookie" and isinstance(saved_cookies, dict):
+            has_required = all(k in saved_cookies for k in REQUIRED_COOKIES)
+            if has_required:
+                self.set_cookies(saved_cookies)
+                if data.get("token"):
+                    self._token = data["token"]
+                return
 
         if data.get("token"):
             self.set_token(data["token"])
