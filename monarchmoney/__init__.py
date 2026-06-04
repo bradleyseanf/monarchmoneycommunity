@@ -5,6 +5,7 @@ A Python API for interacting with MonarchMoney.
 """
 
 from .monarchmoney import (
+    CaptchaRequiredException,
     LoginFailedException,
     MonarchMoneyEndpoints,
     MonarchMoney,
