@@ -225,7 +225,12 @@ class MonarchMoney(object):
         headers.pop("Accept", None)
         headers.pop("Content-Type", None)
 
-        cookies = self._cookies if self._cookies and "monarch.com" in url else None
+        if "monarch.com" in url:
+            cookies = self._cookies if self._auth_mode == "cookie" else None
+        else:
+            cookies = None
+            for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken"]:
+                headers.pop(key, None)
         async with ClientSession(headers=headers, cookies=cookies) as session:
             resp = await session.post(url, data=data)
             if resp.status != 200:
@@ -3790,10 +3795,11 @@ class MonarchMoney(object):
             raise LoginFailedException(
                 "Make sure you call login() first or provide a session token!"
             )
+        cookies = self._cookies if self._auth_mode == "cookie" else None
         transport = AIOHTTPTransport(
             url=MonarchMoneyEndpoints.getGraphQL(),
             headers=self._headers,
-            cookies=self._cookies,
+            cookies=cookies,
             timeout=self._timeout,
             ssl=True,
         )
