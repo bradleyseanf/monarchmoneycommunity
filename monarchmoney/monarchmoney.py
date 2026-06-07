@@ -87,7 +87,6 @@ class MonarchMoney(object):
         self,
         session_file: str = SESSION_FILE,
         timeout: int = 10,
-        token: Optional[str] = None,
     ) -> None:
         self._headers = {
             "Accept": "application/json",
@@ -95,11 +94,9 @@ class MonarchMoney(object):
             "Content-Type": "application/json",
             "User-Agent": "MonarchMoneyAPI (https://github.com/bradleyseanf/monarchmoneycommunity)",
         }
-        if token:
-            self._headers["Authorization"] = f"Token {token}"
 
         self._session_file = session_file
-        self._token = token
+        self._token: Optional[str] = None
         self._cookies: Optional[Dict[str, str]] = None
         self._auth_mode: str = "token"
         self._timeout = timeout
@@ -122,13 +119,6 @@ class MonarchMoney(object):
     def set_timeout(self, timeout_secs: int) -> None:
         """Sets the default timeout on GraphQL API calls, in seconds."""
         self._timeout = timeout_secs
-
-    @property
-    def token(self) -> Optional[str]:
-        return self._token
-
-    def set_token(self, token: str) -> None:
-        self._token = token
 
     def set_cookies(self, cookies: Dict[str, str]) -> None:
         missing = [k for k in REQUIRED_COOKIES if k not in cookies]
@@ -3660,15 +3650,24 @@ class MonarchMoney(object):
                         body = await resp.json()
                         if body.get("error_code") == "CAPTCHA_REQUIRED":
                             raise CaptchaRequiredException(
-                                "Programmatic login is blocked by CAPTCHA. "
-                                "Use login_with_cookies() to authenticate with "
-                                "browser cookies instead."
+                                "Monarch blocked this login attempt with a CAPTCHA.\n\n"
+                                "Two ways to get around this:\n"
+                                "  1. If you have your authenticator app's base-32 secret key,\n"
+                                "     pass it as mfa_secret_key= to login() for fully automated auth.\n"
+                                "  2. Otherwise, grab your browser cookies from app.monarch.com\n"
+                                "     (DevTools → Application → Cookies → copy session_id and csrftoken)\n"
+                                "     and call login_with_cookies('session_id=xxx; csrftoken=yyy') instead."
                             )
                     except CaptchaRequiredException:
                         raise
                     except Exception:
                         pass
-                    raise RequireMFAException("Multi-Factor Auth Required")
+                    raise RequireMFAException(
+                        "Monarch requires multi-factor authentication.\n"
+                        "Call multi_factor_authenticate(email, password, code) with the\n"
+                        "6-digit code from your authenticator app.\n"
+                        "Or pass mfa_secret_key= to login() to generate the code automatically."
+                    )
                 if resp.status != 200:
                     try:
                         response = await resp.json()
@@ -3737,15 +3736,21 @@ class MonarchMoney(object):
                         body = await resp.json()
                         if body.get("error_code") == "CAPTCHA_REQUIRED":
                             raise CaptchaRequiredException(
-                                "Programmatic login is blocked by CAPTCHA. "
-                                "Use login_with_cookies() to authenticate with "
-                                "browser cookies instead."
+                                "Monarch blocked this MFA attempt with a CAPTCHA.\n\n"
+                                "Two ways to get around this:\n"
+                                "  1. If you have your authenticator app's base-32 secret key,\n"
+                                "     pass it as mfa_secret_key= to login() for fully automated auth.\n"
+                                "  2. Otherwise, grab your browser cookies from app.monarch.com\n"
+                                "     (DevTools → Application → Cookies → copy session_id and csrftoken)\n"
+                                "     and call login_with_cookies('session_id=xxx; csrftoken=yyy') instead."
                             )
                     except CaptchaRequiredException:
                         raise
                     except Exception:
                         pass
-                    raise RequireMFAException("Multi-Factor Auth Required")
+                    raise RequireMFAException(
+                        "MFA attempt failed — check that your 6-digit code is correct and has not expired."
+                    )
                 if resp.status != 200:
                     try:
                         response = await resp.json()

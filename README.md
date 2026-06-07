@@ -33,56 +33,58 @@ Import the library as `monarchmoney` after installation.
 This package pins `gql` to `4.0`.
 # Instantiate & Login
 
-There are two ways to use this library: interactive and non-interactive.
+Monarch Money requires multi-factor authentication and increasingly blocks programmatic logins with CAPTCHA. There are three supported auth approaches — pick the one that works for your setup.
 
-## Interactive
+## Option 1: TOTP secret key (fully automated, recommended for scripts)
 
-If you're using this library in something like iPython or Jupyter, you can run an interactive-login which supports multi-factor authentication:
-
-```python
-from monarchmoney import MonarchMoney
-
-mm = MonarchMoney()
-await mm.interactive_login()
-```
-This will prompt you for the email, password and, if needed, the multi-factor token.
-
-## Non-interactive
-
-For a non-interactive session, you'll need to create an instance and login:
+If you have the base-32 secret from when you set up your authenticator app, the library can generate the 6-digit code automatically. In Monarch, go to **Settings → Security → Two-factor authentication** and copy the **"Two-factor text code"** (the raw base-32 string, not the QR code).
 
 ```python
 from monarchmoney import MonarchMoney
 
 mm = MonarchMoney()
-await mm.login(email, password)
+await mm.login(
+    email="you@example.com",
+    password="yourpassword",
+    mfa_secret_key="BASE32TOTPSECRETHERE",
+)
 ```
 
-This may throw a `RequireMFAException`.  If it does, you'll need to get a multi-factor token and call the following method:
+## Option 2: Interactive MFA code prompt
+
+If you don't have the base-32 secret but can read a 6-digit code from your authenticator app:
 
 ```python
 from monarchmoney import MonarchMoney, RequireMFAException
 
 mm = MonarchMoney()
 try:
-        await mm.login(email, password)
+    await mm.login(email="you@example.com", password="yourpassword")
 except RequireMFAException:
-        await mm.multi_factor_authenticate(email, password, multi_factor_code)
+    code = input("Enter your 6-digit MFA code: ")
+    await mm.multi_factor_authenticate("you@example.com", "yourpassword", code)
 ```
 
-Alternatively, you can provide the MFA Secret Key. The MFA Secret Key is found when setting up the MFA in Monarch Money by going to Settings -> Security -> Enable MFA -> and copy the `Two-factor text code`. Then provide it in the login() method:
+For iPython / Jupyter, `interactive_login()` handles this automatically:
+
 ```python
-from monarchmoney import MonarchMoney, RequireMFAException
+mm = MonarchMoney()
+await mm.interactive_login()
+```
+
+## Option 3: Browser cookies (use when CAPTCHA blocks login)
+
+If Monarch blocks the programmatic login with a CAPTCHA, authenticate via your browser instead:
+
+1. Open [app.monarch.com](https://app.monarch.com) and log in normally
+2. Open DevTools → **Application** → **Cookies** → `app.monarch.com`
+3. Copy the values of `session_id` and `csrftoken`
+
+```python
+from monarchmoney import MonarchMoney
 
 mm = MonarchMoney()
-await mm.login(
-        email=email,
-        password=password,
-        save_session=False,
-        use_saved_session=False,
-        mfa_secret_key=mfa_secret_key,
-    )
-
+await mm.login_with_cookies("session_id=xxx; csrftoken=yyy")
 ```
 
 # Use a Saved Session
