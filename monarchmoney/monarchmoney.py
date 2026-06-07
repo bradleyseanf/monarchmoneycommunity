@@ -8,6 +8,7 @@ import os
 import sys
 import pickle
 import time
+import uuid
 from dataclasses import dataclass
 from io import StringIO
 from datetime import datetime, date, timedelta
@@ -64,6 +65,10 @@ class MonarchMoneyEndpoints(object):
     @classmethod
     def getAttachmentUploadEndpoint(cls) -> str:
         return cls.CLOUDINARY_BASE_URL + "/v1_1/monarch-money/image/upload/"
+
+    @classmethod
+    def getRetailSyncFilesEndpoint(cls, sync_id: str) -> str:
+        return cls.BASE_URL + f"/retail-sync/{sync_id}/files"
 
 
 class RequireMFAException(Exception):
@@ -3153,6 +3158,80 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def _create_retail_sync_session(self) -> Dict[str, Any]:
+        """
+        Creates a bulk retail sync session used to upload receipts to the inbox.
+        """
+        query = gql(
+            """
+            mutation Common_CreateBulkRetailSync($input: CreateBulkRetailSyncInput!) {
+                createBulkRetailSync(input: $input) {
+                    retailSyncs {
+                        id
+                        vendor
+                        status
+                        startedAt
+                        endedAt
+                        createdAt
+                        updatedAt
+                    }
+                    errors {
+                        ...PayloadErrorFields
+                    }
+                }
+            }
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors { field messages }
+                message
+                code
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_CreateBulkRetailSync",
+            variables={"input": {"count": 1}},
+            graphql_query=query,
+        )
+
+    async def _start_retail_sync(self, sync_id: str) -> Dict[str, Any]:
+        """
+        Starts a retail sync session, triggering Monarch's AI to process uploaded receipts.
+
+        :param sync_id: The retail sync session ID returned by _create_retail_sync_session.
+        """
+        query = gql(
+            """
+            mutation Common_StartRetailSync($syncId: ID!) {
+                startRetailSync(id: $syncId) {
+                    retailSync {
+                        id
+                        vendor
+                        status
+                        startedAt
+                        endedAt
+                        createdAt
+                        updatedAt
+                    }
+                    errors {
+                        ...PayloadErrorFields
+                    }
+                }
+            }
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors { field messages }
+                message
+                code
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_StartRetailSync",
+            variables={"syncId": sync_id},
+            graphql_query=query,
+        )
+
     async def _add_transaction_attachment(
         self,
         transaction_id: str,
@@ -3255,6 +3334,50 @@ class MonarchMoney(object):
             extension=upload_response["format"],
             size_bytes=upload_response["bytes"],
         )
+
+    async def upload_receipt_to_inbox(
+        self,
+        file_content: bytes,
+        filename: str,
+    ) -> Dict[str, Any]:
+        """
+        Uploads a receipt to the Monarch general receipt inbox (not attached to a specific
+        transaction), triggering Monarch's AI to categorize and match it automatically.
+
+        :param file_content: The raw bytes of the receipt file.
+        :param filename: The name of the file including its extension (e.g. "receipt.jpg").
+        """
+        result = await self._create_retail_sync_session()
+        syncs = result.get("createBulkRetailSync", {}).get("retailSyncs", [])
+        errors = result.get("createBulkRetailSync", {}).get("errors") or []
+        if not syncs or errors:
+            raise RequestFailedException(
+                f"Failed to create retail sync session: {errors}"
+            )
+        sync_id = syncs[0]["id"]
+
+        mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        metadata = json.dumps(
+            {
+                "orderId": str(uuid.uuid4()),
+                "vendor": "user_import",
+                "payloadType": "order",
+                "contentType": mime_type,
+            }
+        )
+
+        form = FormData()
+        form.add_field("payloads_count", "1")
+        form.add_field("metadata_0", metadata)
+        form.add_field("payload_0", file_content, filename=filename, content_type=mime_type)
+
+        await self._upload_form_data(
+            url=MonarchMoneyEndpoints.getRetailSyncFilesEndpoint(sync_id),
+            data=form,
+        )
+
+        result = await self._start_retail_sync(sync_id)
+        return result["startRetailSync"]["retailSync"]
 
     async def _initiate_upload_attachment_session(self, session_key: str) -> dict:
         """
