@@ -3607,7 +3607,7 @@ class MonarchMoney(object):
                 return
 
         if data.get("token"):
-            self.set_token(data["token"])
+            self._token = data["token"]
             self._headers["Authorization"] = f"Token {self._token}"
         else:
             raise LoginFailedException(
@@ -3704,7 +3704,7 @@ class MonarchMoney(object):
                         "Retry with trusted_device=True or complete MFA as trusted device."
                     )
 
-                self.set_token(tok)
+                self._token = tok
                 self._headers["Authorization"] = f"Token {self._token}"
 
     async def _multi_factor_authenticate(
@@ -3789,7 +3789,7 @@ class MonarchMoney(object):
                         "Make sure trusted_device=True when performing MFA."
                     )
 
-                self.set_token(tok)
+                self._token = tok
                 self._headers["Authorization"] = f"Token {self._token}"
 
     def _get_graphql_client(self) -> Client:
