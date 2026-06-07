@@ -8,6 +8,7 @@ import os
 import sys
 import pickle
 import time
+from urllib.parse import unquote
 from dataclasses import dataclass
 from io import StringIO
 from datetime import datetime, date, timedelta
@@ -155,7 +156,7 @@ class MonarchMoney(object):
             if "=" not in pair:
                 continue
             key, _, value = pair.partition("=")
-            cookies[key.strip()] = value.strip()
+            cookies[key.strip()] = unquote(value.strip())
         return cookies
 
     async def interactive_login(

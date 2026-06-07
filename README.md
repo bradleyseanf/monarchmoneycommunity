@@ -74,11 +74,19 @@ await mm.interactive_login()
 
 ## Option 3: Browser cookies (use when CAPTCHA blocks login)
 
-If Monarch blocks the programmatic login with a CAPTCHA, authenticate via your browser instead:
+If Monarch blocks the programmatic login with a CAPTCHA, authenticate via your browser instead.
+
+> **Important:** Use the **Network tab** to get your cookies, not the Application/Cookies tab.
+> The Application tab shows the frontend session cookie, which is different from the API session
+> cookie that this library needs. The Network tab shows the exact cookies sent to the API.
+
+**Steps:**
 
 1. Open [app.monarch.com](https://app.monarch.com) and log in normally
-2. Open DevTools → **Application** → **Cookies** → `app.monarch.com`
-3. Copy the values of `session_id` and `csrftoken`
+2. Open DevTools (F12) → **Network** tab
+3. Reload the page, then filter requests by `graphql`
+4. Click any request to `api.monarch.com/graphql` → **Headers** → **Request Headers**
+5. Find the `Cookie:` header and copy its full value
 
 ```python
 from monarchmoney import MonarchMoney
@@ -86,6 +94,9 @@ from monarchmoney import MonarchMoney
 mm = MonarchMoney()
 await mm.login_with_cookies("session_id=xxx; csrftoken=yyy")
 ```
+
+You can pass the entire cookie string copied from the Network tab — the library will extract
+`session_id` and `csrftoken` and ignore the rest.
 
 # Use a Saved Session
 
