@@ -3377,7 +3377,11 @@ class MonarchMoney(object):
         )
 
         result = await self._start_retail_sync(sync_id)
-        return result["startRetailSync"]["retailSync"]
+        start = result.get("startRetailSync") or {}
+        errors = start.get("errors") or []
+        if errors or not start.get("retailSync"):
+            raise RequestFailedException(f"Failed to start retail sync: {errors}")
+        return start["retailSync"]
 
     async def _initiate_upload_attachment_session(self, session_key: str) -> dict:
         """
