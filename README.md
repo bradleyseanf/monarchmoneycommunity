@@ -309,25 +309,6 @@ As of writing this README, the following methods are supported:
   </tbody>
 </table>
 
-## Uploading a Receipt to the Inbox
-
-`upload_receipt_to_inbox(file_content: bytes, filename: str)` sends a receipt image to Monarch's general receipt inbox, where Monarch's AI will attempt to categorize and match it to a transaction automatically.
-
-```python
-import asyncio
-from monarchmoney import MonarchMoney
-
-async def main():
-    mm = MonarchMoney()
-    await mm.interactive_login()  # see "Logging In" above for other auth options
-
-    with open("receipt.jpg", "rb") as f:
-        result = await mm.upload_receipt_to_inbox(f.read(), "receipt.jpg")
-    print(result)
-
-asyncio.run(main())
-```
-
 # Contributing
 
 Any and all contributions - code, documentation, feature requests, feedback - are welcome!
