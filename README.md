@@ -317,44 +317,15 @@ As of writing this README, the following methods are supported:
 import asyncio
 from monarchmoney import MonarchMoney
 
-# --- Auth option 1: email + password + TOTP secret (fully automated, no prompts) ---
-# mfa_secret_key is the base-32 string shown when you set up your authenticator app.
-# The library generates the 6-digit code automatically using oathtool.
-async def example_totp():
+async def main():
     mm = MonarchMoney()
-    await mm.login(
-        email="you@example.com",
-        password="yourpassword",
-        mfa_secret_key="BASE32TOTPSECRETHERE",
-    )
+    await mm.interactive_login()  # see "Logging In" above for other auth options
+
     with open("receipt.jpg", "rb") as f:
         result = await mm.upload_receipt_to_inbox(f.read(), "receipt.jpg")
     print(result)
 
-# --- Auth option 2: email + password, then enter 2FA code interactively ---
-# Use this if you don't have the base-32 TOTP secret but do have your authenticator app.
-async def example_interactive_mfa():
-    from monarchmoney import RequireMFAException
-    mm = MonarchMoney()
-    try:
-        await mm.login(email="you@example.com", password="yourpassword")
-    except RequireMFAException:
-        code = input("Enter your 6-digit MFA code: ")
-        await mm.multi_factor_authenticate("you@example.com", "yourpassword", code)
-    with open("receipt.jpg", "rb") as f:
-        result = await mm.upload_receipt_to_inbox(f.read(), "receipt.jpg")
-    print(result)
-
-# --- Auth option 3: browser cookies (use when CAPTCHA blocks programmatic login) ---
-# Open app.monarch.com, open DevTools → Application → Cookies, copy session_id and csrftoken.
-async def example_cookies():
-    mm = MonarchMoney()
-    await mm.login_with_cookies("session_id=xxx; csrftoken=yyy")
-    with open("receipt.jpg", "rb") as f:
-        result = await mm.upload_receipt_to_inbox(f.read(), "receipt.jpg")
-    print(result)
-
-asyncio.run(example_totp())
+asyncio.run(main())
 ```
 
 # Contributing
