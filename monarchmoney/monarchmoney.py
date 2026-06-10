@@ -3369,7 +3369,9 @@ class MonarchMoney(object):
         form = FormData()
         form.add_field("payloads_count", "1")
         form.add_field("metadata_0", metadata)
-        form.add_field("payload_0", file_content, filename=filename, content_type=mime_type)
+        form.add_field(
+            "payload_0", file_content, filename=filename, content_type=mime_type
+        )
 
         await self._upload_form_data(
             url=MonarchMoneyEndpoints.getRetailSyncFilesEndpoint(sync_id),
