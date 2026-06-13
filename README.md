@@ -302,6 +302,10 @@ As of writing this README, the following methods are supported:
       <td><code>upload_attachment</code></td>
       <td>uploads a binary file for a given transaction by the provided transaction id</td>
     </tr>
+    <tr>
+      <td><code>upload_receipt_to_inbox(file_content, filename)</code></td>
+      <td>uploads a receipt image to the Monarch general receipt inbox (not attached to a specific transaction), triggering Monarch's AI to auto-categorize and match it</td>
+    </tr>
   </tbody>
 </table>
 
