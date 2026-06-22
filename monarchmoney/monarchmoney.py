@@ -318,6 +318,13 @@ class MonarchMoney(object):
               url
               __typename
             }
+            limit
+            dataProviderCreditLimit
+            apr
+            interestRate
+            minimumPayment
+            plannedPayment
+            excludeFromDebtPaydown
             __typename
           }
         """
