@@ -167,9 +167,7 @@ class MonarchHoldings:
         self._account_id_str = (
             str(account_or_id.id)
             if isinstance(account_or_id, MonarchAccount)
-            else str(account_or_id)
-            if account_or_id is not None
-            else "UNKNOWN"
+            else str(account_or_id) if account_or_id is not None else "UNKNOWN"
         )
 
         edges = data.get("portfolio", {}).get("aggregateHoldings", {}).get("edges", [])
