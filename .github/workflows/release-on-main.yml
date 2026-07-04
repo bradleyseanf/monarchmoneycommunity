@@ -9,10 +9,14 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/monarchmoneycommunity
 
     steps:
       - uses: actions/checkout@v4
@@ -47,3 +51,24 @@ jobs:
             --target "${{ github.sha }}" \
             --title "$tag" \
             --generate-notes
+
+      - name: Set up Python
+        if: steps.release.outputs.exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        if: steps.release.outputs.exists == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        if: steps.release.outputs.exists == 'false'
+        run: |
+          python -m build
+
+      - name: Publish package to PyPI
+        if: steps.release.outputs.exists == 'false'
+        uses: pypa/gh-action-pypi-publish@release/v1
