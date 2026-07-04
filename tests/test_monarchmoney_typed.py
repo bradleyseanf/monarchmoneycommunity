@@ -6,11 +6,15 @@ from unittest.mock import patch
 
 from gql import Client
 
-from monarchmoney.monarchmoney_typed import (
+from monarchmoney import (
     MonarchAccount,
     MonarchCashflowSummary,
+    MonarchHolding,
     MonarchHoldings,
     MonarchSubscription,
+    MonarchMoneyTyped,
+)
+from monarchmoney.monarchmoney_typed import (
     TypedMonarchMoney,
 )
 
@@ -22,6 +26,9 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
             pickle.dump({"cookies": {}, "token": "test_token"}, fh)
         self.monarch_money = TypedMonarchMoney()
         self.monarch_money.load_session(self.session_file)
+
+    def test_top_level_monarch_money_aliases_typed_client(self):
+        self.assertIs(MonarchMoneyTyped, TypedMonarchMoney)
 
     def tearDown(self):
         self.monarch_money.delete_session(self.session_file)
@@ -86,3 +93,4 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(holdings, MonarchHoldings)
         self.assertEqual(len(holdings.holdings), 3)
         self.assertEqual(holdings.holdings[0].ticker, "CMF")
+        self.assertIsInstance(holdings.holdings[0], MonarchHolding)

@@ -255,3 +255,4 @@ class TypedMonarchMoney(MonarchMoney):
         if isinstance(account, MonarchAccount):
             return await self.get_account_holdings_for_id(account.id)
         return await self.get_account_holdings_for_id(account)
+MonarchMoneyTyped = TypedMonarchMoney
