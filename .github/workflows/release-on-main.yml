@@ -1,0 +1,49 @@
+name: Create Release From Version
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - monarchmoney/__init__.py
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: current
+        run: |
+          version=$(python3 -c "import pathlib,re; text=pathlib.Path('monarchmoney/__init__.py').read_text(); match=re.search(r'__version__ = \"([^\"]+)\"', text); assert match, 'Could not find __version__ in monarchmoney/__init__.py'; print(match.group(1))")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release exists
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.current.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        if: steps.release.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.current.outputs.version }}"
+          gh release create "$tag" \
+            --target "${{ github.sha }}" \
+            --title "$tag" \
+            --generate-notes
