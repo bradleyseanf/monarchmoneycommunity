@@ -1,35 +1,75 @@
-# Publish to PyPI on GitHub Release publish using OIDC Trusted Publisher.
-
-name: Publish to PyPI
+name: Release and Publish
 
 on:
-  release:
-    types: [published]
-
-permissions:
-  contents: read
+  push:
+    branches:
+      - main
 
 jobs:
-  pypi-publish:
-    name: Upload release to PyPI
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: current
+        run: |
+          version=$(python3 -c "import pathlib,re; text=pathlib.Path('monarchmoney/__init__.py').read_text(); match=re.search(r'__version__ = \"([^\"]+)\"', text); assert match, 'Could not find __version__ in monarchmoney/__init__.py'; print(match.group(1))")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check if release exists
+        id: release_exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.current.outputs.version }}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        if: steps.release_exists.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ steps.current.outputs.version }}"
+          gh release create "$tag" \
+            --target "${{ github.sha }}" \
+            --title "$tag" \
+            --generate-notes
+
+  publish:
+    needs: release
     runs-on: ubuntu-latest
     environment:
       name: pypi
       url: https://pypi.org/p/monarchmoneycommunity
     permissions:
       id-token: write
+
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.x"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build
-    - name: Build package
-      run: |
-        python -m build
-    - name: Publish package to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build package
+        run: |
+          python -m build
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
