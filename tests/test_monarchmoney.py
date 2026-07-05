@@ -206,6 +206,66 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch.object(Client, "execute_async")
+    async def test_get_all_holdings(self, mock_execute_async):
+        """
+        Test the get_all_holdings method.
+        """
+        # First call returns the account list (3 brokerage accounts among 7),
+        # then one holdings result per brokerage account
+        mock_execute_async.side_effect = [
+            TestMonarchMoney.loadTestData(filename="get_accounts.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+        ]
+
+        # Call the get_all_holdings method
+        result = await self.monarch_money.get_all_holdings()
+
+        # Assert one accounts query plus one holdings query per brokerage account
+        self.assertEqual(
+            mock_execute_async.call_count,
+            4,
+            "Expected 4 calls: 1 for accounts, 3 for holdings",
+        )
+
+        # Assert that the result is not None
+        self.assertIsNotNone(result, "Expected result to not be None")
+
+        # Assert only the brokerage accounts are included
+        self.assertEqual(
+            len(result["accounts"]),
+            3,
+            "Expected holdings for 3 brokerage accounts",
+        )
+        self.assertEqual(
+            result["accounts"][0]["id"],
+            "900000000",
+            "Expected first brokerage account id to be '900000000'",
+        )
+        self.assertEqual(
+            result["accounts"][0]["displayName"],
+            "Brokerage",
+            "Expected first brokerage account displayName to be 'Brokerage'",
+        )
+        self.assertEqual(
+            len(
+                result["accounts"][0]["holdings"]["portfolio"]["aggregateHoldings"][
+                    "edges"
+                ]
+            ),
+            3,
+            "Expected 3 holdings in the first brokerage account",
+        )
+        self.assertEqual(
+            result["accounts"][1]["holdings"]["portfolio"]["aggregateHoldings"][
+                "edges"
+            ][1]["node"]["security"]["ticker"],
+            "GOOG",
+            "Expected second holding ticker to be 'GOOG'",
+        )
+
+    @patch.object(Client, "execute_async")
     async def test_get_budgets(self, mock_execute_async):
         """
         Test the get_accounts method.

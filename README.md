@@ -134,6 +134,10 @@ As of writing this README, the following methods are supported:
       <td>gets all of the securities in a brokerage or similar type of account</td>
     </tr>
     <tr>
+      <td><code>get_all_holdings</code></td>
+      <td>gets the securities in every brokerage or similar type of account in one call</td>
+    </tr>
+    <tr>
       <td><code>get_account_type_options</code></td>
       <td>all account types and their subtypes available in Monarch Money</td>
     </tr>
