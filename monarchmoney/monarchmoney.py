@@ -921,6 +921,33 @@ class MonarchMoney(object):
             variables=variables,
         )
 
+    async def get_all_holdings(self) -> Dict[str, Any]:
+        """
+        Get the holdings information for all brokerage or similar type accounts.
+
+        Convenience wrapper around get_account_holdings that first looks up
+        every account of type "brokerage" and fetches its holdings.
+
+        Returns a dict with an "accounts" list; each entry contains the
+        account's "id", "displayName", and its "holdings" (in the same format
+        returned by get_account_holdings).
+        """
+        all_holdings: Dict[str, Any] = {"accounts": []}
+        accounts = await self.get_accounts()
+        for account in accounts.get("accounts", []):
+            account_type = account.get("type") or {}
+            if account_type.get("name") != "brokerage":
+                continue
+            holdings = await self.get_account_holdings(account["id"])
+            all_holdings["accounts"].append(
+                {
+                    "id": account["id"],
+                    "displayName": account.get("displayName"),
+                    "holdings": holdings,
+                }
+            )
+        return all_holdings
+
     async def get_account_history(self, account_id: int) -> Dict[str, Any]:
         """
         Gets historical account snapshot data for the requested account
