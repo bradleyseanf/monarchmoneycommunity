@@ -13,6 +13,7 @@ from monarchmoney import (
     MonarchHoldings,
     MonarchSubscription,
     MonarchMoneyTyped,
+    TypedMonarchMoney as PackageTypedMonarchMoney,
 )
 from monarchmoney.monarchmoney_typed import (
     TypedMonarchMoney,
@@ -29,6 +30,7 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
 
     def test_top_level_monarch_money_aliases_typed_client(self):
         self.assertIs(MonarchMoneyTyped, TypedMonarchMoney)
+        self.assertIs(PackageTypedMonarchMoney, TypedMonarchMoney)
 
     def tearDown(self):
         self.monarch_money.delete_session(self.session_file)
