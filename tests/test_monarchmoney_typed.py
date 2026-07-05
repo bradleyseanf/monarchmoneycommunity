@@ -7,14 +7,15 @@ from unittest.mock import patch
 from gql import Client
 
 from monarchmoney import (
+    MonarchMoney,
+)
+from typedmonarchmoney import (
     MonarchAccount,
     MonarchCashflowSummary,
     MonarchHolding,
     MonarchHoldings,
-    MonarchSubscription,
     MonarchMoneyTyped,
-)
-from monarchmoney.monarchmoney_typed import (
+    MonarchSubscription,
     TypedMonarchMoney,
 )
 
@@ -28,6 +29,7 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
         self.monarch_money.load_session(self.session_file)
 
     def test_top_level_monarch_money_aliases_typed_client(self):
+        self.assertEqual(MonarchMoney.__name__, "MonarchMoney")
         self.assertIs(MonarchMoneyTyped, TypedMonarchMoney)
 
     def tearDown(self):
@@ -48,6 +50,8 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(accounts[0], MonarchAccount)
         self.assertEqual(accounts[0].name, "Brokerage")
         self.assertEqual(accounts[4].type, "real_estate")
+        self.assertTrue(accounts[4].is_balance_account)
+        self.assertFalse(accounts[4].is_value_account)
 
     @patch.object(Client, "execute_async")
     async def test_cashflow_and_subscription_are_typed(self, mock_execute_async):
