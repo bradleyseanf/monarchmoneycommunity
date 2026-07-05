@@ -309,6 +309,32 @@ As of writing this README, the following methods are supported:
   </tbody>
 </table>
 
+# MCP Server (Claude Desktop, Claude Code, and other MCP clients)
+
+This repository ships a small, **read-only** [Model Context Protocol](https://modelcontextprotocol.io) server (`mcp_server.py`) that exposes common queries (accounts, transactions, cash flow, budgets, categories, recurring transactions, holdings, net worth history) as MCP tools. No mutating tools are exposed: nothing an MCP client calls can create, modify, or delete anything in your Monarch account.
+
+Setup:
+
+1. Install the MCP SDK alongside this library: `pip install mcp`
+2. Log in once to create a session file (see [Instantiate & Login](#instantiate--login) above).
+3. Register the server with your MCP client, pointing `MM_SESSION_FILE` at your session file. For Claude Desktop (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "monarchmoney": {
+      "command": "/path/to/python",
+      "args": ["/path/to/mcp_server.py"],
+      "env": { "MM_SESSION_FILE": "/path/to/.mm/mm_session.pickle" }
+    }
+  }
+}
+```
+
+Or for Claude Code: `claude mcp add monarchmoney -e MM_SESSION_FILE=/path/to/.mm/mm_session.pickle -- /path/to/python /path/to/mcp_server.py`
+
+Security notes: the session file grants full account access — keep it private (`chmod 600`) and out of version control. The server is read-only by design; if you need mutating tools, wrap the library yourself and keep those tools behind your client's permission prompts.
+
 # Contributing
 
 Any and all contributions - code, documentation, feature requests, feedback - are welcome!
