@@ -1,7 +1,7 @@
 import os
 import pickle
 import unittest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import json
 from gql import Client
@@ -265,6 +265,35 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         """
         with self.assertRaises(LoginFailedException):
             await self.monarch_money.interactive_login(use_saved_session=False)
+
+    @patch("monarchmoney.monarchmoney.ClientSession")
+    async def test_multi_factor_authenticate_bad_code_raises_login_failed(
+        self, mock_client_session
+    ):
+        """
+        Bad MFA codes should raise LoginFailedException, not RequireMFAException.
+        """
+        response = AsyncMock()
+        response.status = 400
+        response.reason = "Bad Request"
+        response.json = AsyncMock(return_value={"detail": "Invalid MFA code"})
+
+        post_context = MagicMock()
+        post_context.__aenter__.return_value = response
+
+        session = MagicMock()
+        session.post.return_value = post_context
+
+        client_context = MagicMock()
+        client_context.__aenter__.return_value = session
+        mock_client_session.return_value = client_context
+
+        with self.assertRaises(LoginFailedException) as ctx:
+            await self.monarch_money.multi_factor_authenticate(
+                "bradley@example.com", "password", "123456"
+            )
+
+        self.assertEqual(str(ctx.exception), "Invalid MFA code")
 
     @classmethod
     def loadTestData(cls, filename) -> dict:
