@@ -3886,7 +3886,7 @@ class MonarchMoney(object):
                     try:
                         response = await resp.json()
                         if "detail" in response:
-                            raise RequireMFAException(response["detail"])
+                            raise LoginFailedException(response["detail"])
                         if "error_code" in response:
                             raise LoginFailedException(response["error_code"])
                         raise LoginFailedException(f"Unrecognized error: {response}")
