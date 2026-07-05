@@ -314,7 +314,7 @@ As of writing this README, the following methods are supported:
 If you want typed account, subscription, and holdings models, import the typed client:
 
 ```python
-from monarchmoney import TypedMonarchMoney
+from typedmonarchmoney import TypedMonarchMoney
 
 mm = TypedMonarchMoney()
 accounts = await mm.get_accounts()

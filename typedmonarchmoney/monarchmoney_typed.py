@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
-from .monarchmoney import DEFAULT_RECORD_LIMIT, MonarchMoney, SESSION_FILE
+from monarchmoney.monarchmoney import DEFAULT_RECORD_LIMIT, MonarchMoney, SESSION_FILE
 
 
 def _parse_float(value: Any, default: float = -1.0) -> float:
@@ -35,10 +35,8 @@ def _normalize_url(url: Optional[str]) -> str:
 
 
 VALUE_ACCOUNT_TYPES = {
-    "other_asset",
     "other_assets",
     "real-estate",
-    "real_estate",
     "valuables",
     "vehicle",
 }
