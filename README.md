@@ -309,6 +309,19 @@ As of writing this README, the following methods are supported:
   </tbody>
 </table>
 
+## Typed Client
+
+If you want typed account, subscription, and holdings models, import the typed client:
+
+```python
+from typedmonarchmoney import TypedMonarchMoney
+
+mm = TypedMonarchMoney()
+accounts = await mm.get_accounts()
+```
+
+The typed client returns `MonarchAccount`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` objects instead of raw dictionaries.
+
 # Contributing
 
 Any and all contributions - code, documentation, feature requests, feedback - are welcome!
