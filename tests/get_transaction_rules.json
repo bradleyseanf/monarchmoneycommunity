@@ -1,0 +1,160 @@
+{
+  "transactionRules": [
+    {
+      "id": "rule_1",
+      "order": 1,
+      "merchantCriteriaUseOriginalStatement": false,
+      "merchantCriteria": [],
+      "originalStatementCriteria": [],
+      "merchantNameCriteria": [
+        {
+          "operator": "contains",
+          "value": "Example Market",
+          "__typename": "MerchantCriterion"
+        }
+      ],
+      "amountCriteria": null,
+      "categoryIds": [],
+      "accountIds": [],
+      "categories": [],
+      "accounts": [],
+      "criteriaOwnerIsJoint": false,
+      "criteriaOwnerUserIds": [],
+      "criteriaOwnerUsers": [],
+      "criteriaBusinessEntityIds": [],
+      "criteriaBusinessEntityIsUnassigned": false,
+      "criteriaBusinessEntities": [],
+      "setMerchantAction": {
+        "id": "merchant_1",
+        "name": "Example Market",
+        "__typename": "Merchant"
+      },
+      "setCategoryAction": {
+        "id": "category_1",
+        "name": "Groceries",
+        "icon": "cart",
+        "__typename": "Category"
+      },
+      "addTagsAction": [
+        {
+          "id": "tag_1",
+          "name": "Household",
+          "color": "#19D2A5",
+          "__typename": "TransactionTag"
+        }
+      ],
+      "linkGoalAction": null,
+      "linkSavingsGoalAction": null,
+      "needsReviewByUserAction": null,
+      "unassignNeedsReviewByUserAction": false,
+      "sendNotificationAction": false,
+      "setHideFromReportsAction": false,
+      "setLinkToPaydownBudgetAction": false,
+      "reviewStatusAction": "reviewed",
+      "actionSetOwnerIsJoint": false,
+      "actionSetOwner": null,
+      "actionSetBusinessEntity": null,
+      "actionSetBusinessEntityIsUnassigned": false,
+      "recentApplicationCount": 5,
+      "lastAppliedAt": "2026-01-15T12:00:00Z",
+      "splitTransactionsAction": null,
+      "__typename": "TransactionRuleV2"
+    },
+    {
+      "id": "rule_2",
+      "order": 2,
+      "merchantCriteriaUseOriginalStatement": true,
+      "merchantCriteria": [],
+      "originalStatementCriteria": [
+        {
+          "operator": "contains",
+          "value": "EXAMPLE ONLINE",
+          "__typename": "MerchantCriterion"
+        }
+      ],
+      "merchantNameCriteria": [],
+      "amountCriteria": {
+        "operator": "between",
+        "isExpense": true,
+        "value": null,
+        "valueRange": {
+          "lower": 10.0,
+          "upper": 100.0,
+          "__typename": "DecimalRange"
+        },
+        "__typename": "AmountCriteriaV2"
+      },
+      "categoryIds": [
+        "category_2"
+      ],
+      "accountIds": [
+        "account_1"
+      ],
+      "categories": [
+        {
+          "id": "category_2",
+          "name": "Shopping",
+          "icon": "bag",
+          "__typename": "Category"
+        }
+      ],
+      "accounts": [
+        {
+          "id": "account_1",
+          "displayName": "Checking",
+          "icon": null,
+          "logoUrl": null,
+          "__typename": "Account"
+        }
+      ],
+      "criteriaOwnerIsJoint": false,
+      "criteriaOwnerUserIds": [],
+      "criteriaOwnerUsers": [],
+      "criteriaBusinessEntityIds": [],
+      "criteriaBusinessEntityIsUnassigned": false,
+      "criteriaBusinessEntities": [],
+      "setMerchantAction": null,
+      "setCategoryAction": null,
+      "addTagsAction": [],
+      "linkGoalAction": null,
+      "linkSavingsGoalAction": null,
+      "needsReviewByUserAction": null,
+      "unassignNeedsReviewByUserAction": false,
+      "sendNotificationAction": false,
+      "setHideFromReportsAction": false,
+      "setLinkToPaydownBudgetAction": false,
+      "reviewStatusAction": null,
+      "actionSetOwnerIsJoint": false,
+      "actionSetOwner": null,
+      "actionSetBusinessEntity": null,
+      "actionSetBusinessEntityIsUnassigned": false,
+      "recentApplicationCount": 0,
+      "lastAppliedAt": null,
+      "splitTransactionsAction": {
+        "amountType": "absolute",
+        "splitsInfo": [
+          {
+            "categoryId": "category_3",
+            "merchantName": "Example Online",
+            "amount": 25.0,
+            "goalId": null,
+            "savingsGoalId": null,
+            "tags": [
+              "tag_2"
+            ],
+            "hideFromReports": false,
+            "reviewStatus": "needs_review",
+            "needsReviewByUserId": null,
+            "ownerUserId": null,
+            "ownerIsJoint": false,
+            "businessEntityId": null,
+            "businessEntityIsUnassigned": false,
+            "__typename": "SplitTransactionsActionInfo"
+          }
+        ],
+        "__typename": "SplitTransactionsAction"
+      },
+      "__typename": "TransactionRuleV2"
+    }
+  ]
+}

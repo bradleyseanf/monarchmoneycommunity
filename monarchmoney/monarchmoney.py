@@ -38,6 +38,163 @@ MONARCH_COOKIE_HEADERS = {
     "monarch-client-version": "2025.05",
 }
 
+TRANSACTION_RULE_FIELDS_FRAGMENT = """
+          fragment TransactionRuleFields on TransactionRuleV2 {
+            id
+            merchantCriteriaUseOriginalStatement
+            merchantCriteria {
+              operator
+              value
+              __typename
+            }
+            originalStatementCriteria {
+              operator
+              value
+              __typename
+            }
+            merchantNameCriteria {
+              operator
+              value
+              __typename
+            }
+            amountCriteria {
+              operator
+              isExpense
+              value
+              valueRange {
+                lower
+                upper
+                __typename
+              }
+              __typename
+            }
+            categoryIds
+            accountIds
+            categories {
+              id
+              name
+              icon
+              __typename
+            }
+            accounts {
+              id
+              displayName
+              icon
+              logoUrl
+              __typename
+            }
+            criteriaOwnerIsJoint
+            criteriaOwnerUserIds
+            criteriaOwnerUsers {
+              id
+              displayName
+              profilePictureUrl
+              __typename
+            }
+            criteriaBusinessEntityIds
+            criteriaBusinessEntityIsUnassigned
+            criteriaBusinessEntities {
+              id
+              name
+              logoUrl
+              color
+              __typename
+            }
+            setMerchantAction {
+              id
+              name
+              __typename
+            }
+            setCategoryAction {
+              id
+              name
+              icon
+              __typename
+            }
+            addTagsAction {
+              id
+              name
+              color
+              __typename
+            }
+            linkGoalAction {
+              id
+              name
+              imageStorageProvider
+              imageStorageProviderId
+              __typename
+            }
+            linkSavingsGoalAction {
+              id
+              name
+              imageStorageProvider
+              imageStorageProviderId
+              __typename
+            }
+            needsReviewByUserAction {
+              id
+              displayName
+              __typename
+            }
+            unassignNeedsReviewByUserAction
+            sendNotificationAction
+            setHideFromReportsAction
+            setLinkToPaydownBudgetAction
+            reviewStatusAction
+            actionSetOwnerIsJoint
+            actionSetOwner {
+              id
+              displayName
+              profilePictureUrl
+              __typename
+            }
+            actionSetBusinessEntity {
+              id
+              name
+              logoUrl
+              color
+              __typename
+            }
+            actionSetBusinessEntityIsUnassigned
+            recentApplicationCount
+            lastAppliedAt
+            splitTransactionsAction {
+              amountType
+              splitsInfo {
+                categoryId
+                merchantName
+                amount
+                goalId
+                savingsGoalId
+                tags
+                hideFromReports
+                reviewStatus
+                needsReviewByUserId
+                ownerUserId
+                ownerIsJoint
+                businessEntityId
+                businessEntityIsUnassigned
+                __typename
+              }
+              __typename
+            }
+            __typename
+          }
+"""
+
+PAYLOAD_ERROR_FIELDS_FRAGMENT = """
+          fragment PayloadErrorFields on PayloadError {
+            fieldErrors {
+              field
+              messages
+              __typename
+            }
+            message
+            code
+            __typename
+          }
+"""
+
 
 @dataclass
 class BalanceHistoryRow:
@@ -1666,6 +1823,320 @@ class MonarchMoney(object):
         return await self.gql_call(
             operation="GetTransactionsList", graphql_query=query, variables=variables
         )
+
+    async def get_transaction_rules(self) -> Dict[str, Any]:
+        """
+        Gets all transaction rules configured in the account, including their order,
+        criteria, and actions.
+        """
+        query = gql(
+            """
+          query Web_GetTransactionRules {
+            transactionRules {
+              id
+              order
+              ...TransactionRuleFields
+              __typename
+            }
+          }
+        """
+            + TRANSACTION_RULE_FIELDS_FRAGMENT
+        )
+
+        return await self.gql_call(
+            operation="Web_GetTransactionRules", graphql_query=query
+        )
+
+    async def preview_transaction_rule(
+        self, rule: Dict[str, Any], offset: Optional[int] = 0
+    ) -> Dict[str, Any]:
+        """
+        Previews the transactions that would be affected by a transaction rule.
+
+        :param rule: A dictionary matching Monarch's TransactionRulePreviewInput.
+        :param offset: The number of preview results to skip before retrieving results.
+        """
+        query = gql(
+            """
+          query Common_PreviewTransactionRule($rule: TransactionRulePreviewInput!, $offset: Int) {
+            transactionRulePreview(input: $rule) {
+              totalCount
+              results(offset: $offset, limit: 30) {
+                newName
+                newSplitTransactions
+                newCategory {
+                  id
+                  icon
+                  name
+                  __typename
+                }
+                newOwnerIsJoint
+                newOwnerUser {
+                  id
+                  displayName
+                  profilePictureUrl
+                  __typename
+                }
+                newHideFromReports
+                newTags {
+                  id
+                  name
+                  color
+                  order
+                  __typename
+                }
+                newGoal {
+                  id
+                  name
+                  imageStorageProvider
+                  imageStorageProviderId
+                  __typename
+                }
+                newSavingsGoal {
+                  id
+                  name
+                  imageStorageProvider
+                  imageStorageProviderId
+                  __typename
+                }
+                newBusinessEntity {
+                  id
+                  name
+                  logoUrl
+                  color
+                  __typename
+                }
+                newBusinessEntityIsUnassigned
+                transaction {
+                  id
+                  date
+                  amount
+                  merchant {
+                    id
+                    name
+                    __typename
+                  }
+                  category {
+                    id
+                    name
+                    icon
+                    __typename
+                  }
+                  ownedByUser {
+                    id
+                    displayName
+                    profilePictureUrl
+                    __typename
+                  }
+                  businessEntity {
+                    id
+                    name
+                    logoUrl
+                    color
+                    __typename
+                  }
+                  goal {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                    __typename
+                  }
+                  savingsGoalEvent {
+                    id
+                    goal {
+                      id
+                      name
+                      imageStorageProvider
+                      imageStorageProviderId
+                      __typename
+                    }
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+        )
+
+        return await self.gql_call(
+            operation="Common_PreviewTransactionRule",
+            graphql_query=query,
+            variables={"rule": rule, "offset": offset},
+        )
+
+    async def create_transaction_rule(self, rule: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Creates a transaction rule.
+
+        :param rule: A dictionary matching Monarch's CreateTransactionRuleInput.
+        """
+        query = gql(
+            """
+          mutation Common_CreateTransactionRuleMutationV2($input: CreateTransactionRuleInput!) {
+            createTransactionRuleV2(input: $input) {
+              transactionRule {
+                id
+                order
+                ...TransactionRuleFields
+                __typename
+              }
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+            + TRANSACTION_RULE_FIELDS_FRAGMENT
+            + PAYLOAD_ERROR_FIELDS_FRAGMENT
+        )
+
+        return await self.gql_call(
+            operation="Common_CreateTransactionRuleMutationV2",
+            graphql_query=query,
+            variables={"input": rule},
+        )
+
+    async def update_transaction_rule(
+        self, rule_id: str, rule: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Updates a transaction rule.
+
+        :param rule_id: The ID of the transaction rule to update.
+        :param rule: A dictionary matching Monarch's UpdateTransactionRuleInput, without the id.
+        """
+        query = gql(
+            """
+          mutation Common_UpdateTransactionRuleMutationV2($input: UpdateTransactionRuleInput!) {
+            updateTransactionRuleV2(input: $input) {
+              transactionRule {
+                id
+                order
+                ...TransactionRuleFields
+                __typename
+              }
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+            + TRANSACTION_RULE_FIELDS_FRAGMENT
+            + PAYLOAD_ERROR_FIELDS_FRAGMENT
+        )
+
+        transaction_rule_input = {**rule, "id": rule_id}
+
+        return await self.gql_call(
+            operation="Common_UpdateTransactionRuleMutationV2",
+            graphql_query=query,
+            variables={"input": transaction_rule_input},
+        )
+
+    async def update_transaction_rule_order(
+        self, rule_id: str, order: int
+    ) -> Dict[str, Any]:
+        """
+        Updates a transaction rule's order and returns the reordered rule list.
+
+        :param rule_id: The ID of the transaction rule to move.
+        :param order: The new order value for the rule.
+        """
+        query = gql(
+            """
+          mutation Web_UpdateRuleOrderMutation($id: ID!, $order: Int!) {
+            updateTransactionRuleOrderV2(id: $id, order: $order) {
+              transactionRules {
+                id
+                order
+                ...TransactionRuleFields
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+            + TRANSACTION_RULE_FIELDS_FRAGMENT
+        )
+
+        return await self.gql_call(
+            operation="Web_UpdateRuleOrderMutation",
+            graphql_query=query,
+            variables={"id": rule_id, "order": order},
+        )
+
+    async def delete_transaction_rule(self, rule_id: str) -> bool:
+        """
+        Deletes a transaction rule.
+
+        :param rule_id: The ID of the transaction rule to delete.
+        """
+        query = gql(
+            """
+          mutation Common_DeleteTransactionRule($id: ID!) {
+            deleteTransactionRule(id: $id) {
+              deleted
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+            + PAYLOAD_ERROR_FIELDS_FRAGMENT
+        )
+
+        response = await self.gql_call(
+            operation="Common_DeleteTransactionRule",
+            graphql_query=query,
+            variables={"id": rule_id},
+        )
+
+        errors = response["deleteTransactionRule"]["errors"]
+        if errors:
+            raise RequestFailedException(errors)
+
+        return True
+
+    async def delete_all_transaction_rules(self) -> bool:
+        """
+        Deletes all transaction rules configured in the account.
+        """
+        query = gql(
+            """
+          mutation Web_DeleteAllTransactionRulesMutation {
+            deleteAllTransactionRules {
+              deleted
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              __typename
+            }
+          }
+        """
+            + PAYLOAD_ERROR_FIELDS_FRAGMENT
+        )
+
+        response = await self.gql_call(
+            operation="Web_DeleteAllTransactionRulesMutation",
+            graphql_query=query,
+        )
+
+        if not response["deleteAllTransactionRules"]["deleted"]:
+            raise RequestFailedException(response["deleteAllTransactionRules"]["errors"])
+
+        return True
 
     async def create_transaction(
         self,

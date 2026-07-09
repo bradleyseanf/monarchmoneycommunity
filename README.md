@@ -170,6 +170,14 @@ As of writing this README, the following methods are supported:
       <td>gets transaction data, defaults to returning the last 100 transactions; can also be searched by date range</td>
     </tr>
     <tr>
+      <td><code>get_transaction_rules</code></td>
+      <td>gets all configured transaction rules, including their order, criteria, and actions</td>
+    </tr>
+    <tr>
+      <td><code>preview_transaction_rule</code></td>
+      <td>previews the transactions that would be affected by a transaction rule</td>
+    </tr>
+    <tr>
       <td><code>find_duplicate_transactions</code></td>
       <td>finds duplicate transaction groups using Plaid-reported fields</td>
     </tr>
@@ -247,6 +255,26 @@ As of writing this README, the following methods are supported:
       <td>modifies one or more attributes for an existing transaction</td>
     </tr>
     <tr>
+      <td><code>create_transaction_rule</code></td>
+      <td>creates a transaction rule from a Monarch rule input dictionary</td>
+    </tr>
+    <tr>
+      <td><code>update_transaction_rule</code></td>
+      <td>updates an existing transaction rule from a Monarch rule input dictionary</td>
+    </tr>
+    <tr>
+      <td><code>update_transaction_rule_order</code></td>
+      <td>updates a transaction rule's order and returns the reordered rule list</td>
+    </tr>
+    <tr>
+      <td><code>delete_transaction_rule</code></td>
+      <td>deletes a transaction rule by the provided rule id</td>
+    </tr>
+    <tr>
+      <td><code>delete_all_transaction_rules</code></td>
+      <td>deletes all transaction rules configured in the account</td>
+    </tr>
+    <tr>
       <td><code>update_reoccuring</code></td>
       <td>updates recurring merchant settings (frequency, amount, date, active status)</td>
     </tr>
@@ -308,6 +336,84 @@ As of writing this README, the following methods are supported:
     </tr>
   </tbody>
 </table>
+
+## Transaction Rules
+
+Transaction rules are returned in Monarch's configured order and use raw Monarch GraphQL dictionaries. This makes it possible to inspect, preview, create, update, reorder, and delete rules without re-implementing rule state outside Monarch. Monarch does not expose GraphQL schema introspection to non-admin users, so the fields below are based on Monarch's web app operations and live API testing.
+
+```python
+from monarchmoney import MonarchMoney
+
+mm = MonarchMoney()
+mm.load_session()
+
+categories = await mm.get_transaction_categories()
+category_id = categories["categories"][0]["id"]
+
+rule = {
+    "merchantCriteria": [
+        {
+            "operator": "contains",
+            "value": "example merchant",
+        }
+    ],
+    "setCategoryAction": category_id,
+    "applyToExistingTransactions": False,
+}
+
+preview = await mm.preview_transaction_rule(rule)
+created = await mm.create_transaction_rule(rule)
+rule_id = created["createTransactionRuleV2"]["transactionRule"]["id"]
+
+await mm.update_transaction_rule(
+    rule_id,
+    {
+        "merchantCriteria": [
+            {
+                "operator": "contains",
+                "value": "updated example merchant",
+            }
+        ],
+        "setCategoryAction": category_id,
+        "setHideFromReportsAction": True,
+        "applyToExistingTransactions": False,
+    },
+)
+
+await mm.update_transaction_rule_order(rule_id, 0)
+await mm.delete_transaction_rule(rule_id)
+```
+
+Common rule criteria fields:
+
+- `merchantCriteria`: match Monarch's merchant field with criteria like `{"operator": "contains", "value": "merchant"}`. Monarch lowercases merchant criterion values when saving rules.
+- `merchantNameCriteria`: match the displayed merchant name.
+- `originalStatementCriteria`: match the original statement text.
+- `amountCriteria`: match amounts, for example `{"operator": "equals", "isExpense": True, "value": 12.34, "valueRange": None}`.
+- `categoryIds`: restrict matches to one or more category IDs.
+- `accountIds`: restrict matches to one or more account IDs.
+- `criteriaOwnerUserIds` and `criteriaOwnerIsJoint`: restrict matches by transaction owner.
+- `criteriaBusinessEntityIds` and `criteriaBusinessEntityIsUnassigned`: restrict matches by business entity.
+
+Common rule action fields:
+
+- `setMerchantAction`: rename the merchant.
+- `setCategoryAction`: set a category by category ID.
+- `addTagsAction`: add one or more tag IDs.
+- `linkGoalAction` or `linkSavingsGoalAction`: link matched transactions to a goal.
+- `needsReviewByUserAction` or `unassignNeedsReviewByUserAction`: set or clear a review assignee.
+- `sendNotificationAction`: send a notification when the rule matches.
+- `setHideFromReportsAction`: hide matched transactions from reports.
+- `setLinkToPaydownBudgetAction`: link matched transactions to a paydown budget.
+- `reviewStatusAction`: set the review status.
+- `actionSetOwner`, `actionSetOwnerIsJoint`, `actionSetBusinessEntity`, and `actionSetBusinessEntityIsUnassigned`: set owner or business metadata.
+- `splitTransactionsAction`: split matched transactions with `amountType` and `splitsInfo`.
+
+Use `applyToExistingTransactions: False` when creating or testing a rule that should only affect future transactions. Set it to `True` only when you intentionally want Monarch to apply the rule to existing matching transactions.
+
+`update_transaction_rule(rule_id, rule)` adds the `id` field for you. For ordering, `update_transaction_rule_order(rule_id, order)` moves a rule to a zero-based position and returns the reordered rule list.
+
+`delete_all_transaction_rules()` is intentionally exposed for parity with Monarch's web app, but it deletes every configured transaction rule in the account. Prefer `delete_transaction_rule(rule_id)` for normal automation.
 
 ## Typed Client
 

@@ -257,6 +257,209 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             "Expected needsReview filter to be True",
         )
 
+    @patch.object(Client, "execute_async")
+    async def test_get_transaction_rules(self, mock_execute_async):
+        """
+        Test the get_transaction_rules method.
+        """
+        mock_execute_async.return_value = TestMonarchMoney.loadTestData(
+            filename="get_transaction_rules.json",
+        )
+
+        result = await self.monarch_money.get_transaction_rules()
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertIn("request", kwargs)
+        self.assertNotIn("document", kwargs)
+        self.assertEqual(kwargs["operation_name"], "Web_GetTransactionRules")
+        self.assertEqual(kwargs["variable_values"], {})
+        self.assertIsNotNone(result, "Expected result to not be None")
+        self.assertEqual(len(result["transactionRules"]), 2, "Expected 2 rules")
+        self.assertEqual(result["transactionRules"][0]["order"], 1)
+        self.assertEqual(
+            result["transactionRules"][0]["merchantNameCriteria"][0]["operator"],
+            "contains",
+        )
+        self.assertEqual(
+            result["transactionRules"][0]["setCategoryAction"]["name"],
+            "Groceries",
+        )
+        self.assertEqual(
+            result["transactionRules"][1]["splitTransactionsAction"]["amountType"],
+            "absolute",
+        )
+
+    @patch.object(Client, "execute_async")
+    async def test_preview_transaction_rule(self, mock_execute_async):
+        """
+        Test the preview_transaction_rule method.
+        """
+        mock_execute_async.return_value = {
+            "transactionRulePreview": {"totalCount": 1, "results": []}
+        }
+        rule = {
+            "merchantCriteria": [
+                {"operator": "contains", "value": "Example Market"}
+            ],
+            "setCategoryAction": "category_1",
+        }
+
+        result = await self.monarch_money.preview_transaction_rule(rule, offset=30)
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(kwargs["operation_name"], "Common_PreviewTransactionRule")
+        self.assertEqual(
+            kwargs["variable_values"], {"rule": rule, "offset": 30}
+        )
+        self.assertEqual(result["transactionRulePreview"]["totalCount"], 1)
+
+    @patch.object(Client, "execute_async")
+    async def test_create_transaction_rule(self, mock_execute_async):
+        """
+        Test the create_transaction_rule method.
+        """
+        mock_execute_async.return_value = {
+            "createTransactionRuleV2": {
+                "transactionRule": {"id": "rule_1"},
+                "errors": None,
+            }
+        }
+        rule = {
+            "merchantCriteria": [
+                {"operator": "contains", "value": "Example Market"}
+            ],
+            "setCategoryAction": "category_1",
+            "applyToExistingTransactions": False,
+        }
+
+        result = await self.monarch_money.create_transaction_rule(rule)
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(
+            kwargs["operation_name"], "Common_CreateTransactionRuleMutationV2"
+        )
+        self.assertEqual(kwargs["variable_values"], {"input": rule})
+        self.assertEqual(
+            result["createTransactionRuleV2"]["transactionRule"]["id"], "rule_1"
+        )
+
+    @patch.object(Client, "execute_async")
+    async def test_update_transaction_rule(self, mock_execute_async):
+        """
+        Test the update_transaction_rule method.
+        """
+        mock_execute_async.return_value = {
+            "updateTransactionRuleV2": {
+                "transactionRule": {"id": "rule_1"},
+                "errors": None,
+            }
+        }
+        rule = {
+            "merchantCriteria": [
+                {"operator": "contains", "value": "Updated Market"}
+            ],
+            "setCategoryAction": "category_2",
+            "applyToExistingTransactions": False,
+        }
+
+        result = await self.monarch_money.update_transaction_rule("rule_1", rule)
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(
+            kwargs["operation_name"], "Common_UpdateTransactionRuleMutationV2"
+        )
+        expected_input = {
+            "merchantCriteria": [
+                {"operator": "contains", "value": "Updated Market"}
+            ],
+            "setCategoryAction": "category_2",
+            "applyToExistingTransactions": False,
+            "id": "rule_1",
+        }
+        self.assertEqual(
+            kwargs["variable_values"],
+            {"input": expected_input},
+        )
+        self.assertEqual(
+            result["updateTransactionRuleV2"]["transactionRule"]["id"], "rule_1"
+        )
+
+    @patch.object(Client, "execute_async")
+    async def test_update_transaction_rule_order(self, mock_execute_async):
+        """
+        Test the update_transaction_rule_order method.
+        """
+        mock_execute_async.return_value = {
+            "updateTransactionRuleOrderV2": {
+                "transactionRules": [{"id": "rule_1", "order": 2}]
+            }
+        }
+
+        result = await self.monarch_money.update_transaction_rule_order("rule_1", 2)
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(kwargs["operation_name"], "Web_UpdateRuleOrderMutation")
+        self.assertEqual(kwargs["variable_values"], {"id": "rule_1", "order": 2})
+        self.assertEqual(
+            result["updateTransactionRuleOrderV2"]["transactionRules"][0]["order"], 2
+        )
+
+    @patch.object(Client, "execute_async")
+    async def test_delete_transaction_rule(self, mock_execute_async):
+        """
+        Test the delete_transaction_rule method.
+        """
+        mock_execute_async.return_value = {
+            "deleteTransactionRule": {"deleted": True, "errors": None}
+        }
+
+        result = await self.monarch_money.delete_transaction_rule("rule_1")
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(kwargs["operation_name"], "Common_DeleteTransactionRule")
+        self.assertEqual(kwargs["variable_values"], {"id": "rule_1"})
+        self.assertTrue(result)
+
+    @patch.object(Client, "execute_async")
+    async def test_delete_transaction_rule_false_without_errors(self, mock_execute_async):
+        """
+        Test the delete_transaction_rule method when Monarch returns a falsey
+        deleted flag without payload errors.
+        """
+        mock_execute_async.return_value = {
+            "deleteTransactionRule": {"deleted": False, "errors": None}
+        }
+
+        result = await self.monarch_money.delete_transaction_rule("rule_1")
+
+        mock_execute_async.assert_called_once()
+        self.assertTrue(result)
+
+    @patch.object(Client, "execute_async")
+    async def test_delete_all_transaction_rules(self, mock_execute_async):
+        """
+        Test the delete_all_transaction_rules method.
+        """
+        mock_execute_async.return_value = {
+            "deleteAllTransactionRules": {"deleted": True, "errors": None}
+        }
+
+        result = await self.monarch_money.delete_all_transaction_rules()
+
+        mock_execute_async.assert_called_once()
+        kwargs = mock_execute_async.call_args.kwargs
+        self.assertEqual(
+            kwargs["operation_name"], "Web_DeleteAllTransactionRulesMutation"
+        )
+        self.assertEqual(kwargs["variable_values"], {})
+        self.assertTrue(result)
+
     @patch("builtins.input", return_value="")
     @patch("getpass.getpass", return_value="")
     async def test_interactive_login(self, _input_mock, _getpass_mock):
