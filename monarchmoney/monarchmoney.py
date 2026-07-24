@@ -1566,6 +1566,12 @@ class MonarchMoney(object):
     
           fragment TransactionOverviewFields on Transaction {
             id
+            ownedByUser {
+              id
+              name
+              __typename
+            }
+            ownershipOverriddenAt
             amount
             pending
             date
@@ -2104,6 +2110,12 @@ class MonarchMoney(object):
           query GetTransactionDrawer($id: UUID!, $redirectPosted: Boolean) {
             getTransaction(id: $id, redirectPosted: $redirectPosted) {
               id
+              ownedByUser {
+                id
+                name
+                __typename
+              }
+              ownershipOverriddenAt
               amount
               pending
               isRecurring
