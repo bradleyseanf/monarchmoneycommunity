@@ -1514,6 +1514,7 @@ class MonarchMoney(object):
         hidden_from_reports: Optional[bool] = None,
         is_split: Optional[bool] = None,
         is_recurring: Optional[bool] = None,
+        is_pending: Optional[bool] = None,
         imported_from_mint: Optional[bool] = None,
         synced_from_institution: Optional[bool] = None,
         needs_review: Optional[bool] = None,
@@ -1537,6 +1538,7 @@ class MonarchMoney(object):
         :param hidden_from_reports: a bool to filter for whether the transactions are hidden from reports.
         :param is_split: a bool to filter for whether the transactions are split.
         :param is_recurring: a bool to filter for whether the transactions are recurring.
+        :param is_pending: a bool to filter for whether the transactions are pending.
         :param imported_from_mint: a bool to filter for whether the transactions were imported from mint.
         :param synced_from_institution: a bool to filter for whether the transactions were synced from an institution.
         :param needs_review: a bool to filter for whether the transactions need review.
@@ -1563,7 +1565,7 @@ class MonarchMoney(object):
               __typename
             }
           }
-    
+
           fragment TransactionOverviewFields on Transaction {
             id
             amount
@@ -1642,6 +1644,9 @@ class MonarchMoney(object):
 
         if is_split is not None:
             variables["filters"]["isSplit"] = is_split
+
+        if is_pending is not None:
+            variables["filters"]["isPending"] = is_pending
 
         if imported_from_mint is not None:
             variables["filters"]["importedFromMint"] = imported_from_mint
@@ -1744,7 +1749,7 @@ class MonarchMoney(object):
               __typename
             }
           }
-  
+
           fragment PayloadErrorFields on PayloadError {
             fieldErrors {
               field
