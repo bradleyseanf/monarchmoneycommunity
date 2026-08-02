@@ -79,6 +79,7 @@ class MonarchAccount:
         self.institution_name = (
             institution.get("name") or data.get("institutionName") or "Manual entry"
         )
+        self.account_owner = data.get("ownedByUser")
         self.holdings = None
 
     @property
