@@ -318,6 +318,12 @@ class MonarchMoney(object):
               url
               __typename
             }
+            ownedByUser {
+              id
+              displayName
+              profilePictureUrl
+              __typename
+            }
             limit
             dataProviderCreditLimit
             apr
