@@ -3810,7 +3810,7 @@ class MonarchMoney(object):
         if mfa_secret_key:
             data["totp"] = oathtool.generate_otp(mfa_secret_key)
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3887,7 +3887,7 @@ class MonarchMoney(object):
             "username": email,
         }
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3961,6 +3961,7 @@ class MonarchMoney(object):
             cookies=cookies,
             timeout=self._timeout,
             ssl=True,
+            client_session_args={"trust_env": True},
         )
         return Client(
             transport=transport,
