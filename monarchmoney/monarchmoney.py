@@ -236,7 +236,9 @@ class MonarchMoney(object):
             cookies = None
             for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken"]:
                 headers.pop(key, None)
-        async with ClientSession(headers=headers, cookies=cookies) as session:
+        async with ClientSession(
+            headers=headers, cookies=cookies, trust_env=True
+        ) as session:
             resp = await session.post(url, data=data)
             if resp.status != 200:
                 raise RequestFailedException(f"HTTP Code {resp.status}: {resp.reason}")
