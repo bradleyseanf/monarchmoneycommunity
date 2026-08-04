@@ -236,7 +236,9 @@ class MonarchMoney(object):
             cookies = None
             for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken"]:
                 headers.pop(key, None)
-        async with ClientSession(headers=headers, cookies=cookies) as session:
+        async with ClientSession(
+            headers=headers, cookies=cookies, trust_env=True
+        ) as session:
             resp = await session.post(url, data=data)
             if resp.status != 200:
                 raise RequestFailedException(f"HTTP Code {resp.status}: {resp.reason}")
@@ -3810,7 +3812,7 @@ class MonarchMoney(object):
         if mfa_secret_key:
             data["totp"] = oathtool.generate_otp(mfa_secret_key)
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3887,7 +3889,7 @@ class MonarchMoney(object):
             "username": email,
         }
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3961,6 +3963,7 @@ class MonarchMoney(object):
             cookies=cookies,
             timeout=self._timeout,
             ssl=True,
+            client_session_args={"trust_env": True},
         )
         return Client(
             transport=transport,
