@@ -933,12 +933,15 @@ class MonarchMoney(object):
         returned by get_account_holdings).
         """
         all_holdings: Dict[str, Any] = {"accounts": []}
-        accounts = await self.get_accounts()
+        # Call the base-class implementations explicitly so subclasses that
+        # override get_accounts/get_account_holdings with different return
+        # types (e.g. TypedMonarchMoney) don't break the raw dict handling.
+        accounts = await MonarchMoney.get_accounts(self)
         for account in accounts.get("accounts", []):
             account_type = account.get("type") or {}
             if account_type.get("name") != "brokerage":
                 continue
-            holdings = await self.get_account_holdings(account["id"])
+            holdings = await MonarchMoney.get_account_holdings(self, account["id"])
             all_holdings["accounts"].append(
                 {
                     "id": account["id"],
