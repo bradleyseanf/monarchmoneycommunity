@@ -135,7 +135,7 @@ As of writing this README, the following methods are supported:
     </tr>
     <tr>
       <td><code>get_all_holdings</code></td>
-      <td>gets the securities in every brokerage or similar type of account in one call</td>
+      <td>gets the securities in every brokerage or similar type of account in one call (no parameters) — example: <code>await mm.get_all_holdings()</code></td>
     </tr>
     <tr>
       <td><code>get_account_type_options</code></td>
