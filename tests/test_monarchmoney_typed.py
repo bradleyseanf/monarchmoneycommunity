@@ -98,3 +98,23 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(holdings.holdings), 3)
         self.assertEqual(holdings.holdings[0].ticker, "CMF")
         self.assertIsInstance(holdings.holdings[0], MonarchHolding)
+
+    @patch.object(Client, "execute_async")
+    async def test_get_all_holdings_returns_raw_dict(self, mock_execute_async):
+        # Regression test: get_all_holdings must bypass the typed overrides of
+        # get_accounts/get_account_holdings and keep returning the raw dict
+        # format even on the typed client.
+        mock_execute_async.side_effect = [
+            self.load_test_data("get_accounts.json"),
+            self.load_test_data("get_account_holdings.json"),
+            self.load_test_data("get_account_holdings.json"),
+            self.load_test_data("get_account_holdings.json"),
+        ]
+
+        result = await self.monarch_money.get_all_holdings()
+
+        self.assertIsInstance(result, dict)
+        self.assertEqual(len(result["accounts"]), 3)
+        for entry in result["accounts"]:
+            self.assertIsInstance(entry["holdings"], dict)
+            self.assertIn("portfolio", entry["holdings"])
