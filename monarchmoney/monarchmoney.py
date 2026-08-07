@@ -932,24 +932,33 @@ class MonarchMoney(object):
         account's "id", "displayName", and its "holdings" (in the same format
         returned by get_account_holdings).
         """
-        all_holdings: Dict[str, Any] = {"accounts": []}
         # Call the base-class implementations explicitly so subclasses that
         # override get_accounts/get_account_holdings with different return
         # types (e.g. TypedMonarchMoney) don't break the raw dict handling.
         accounts = await MonarchMoney.get_accounts(self)
-        for account in accounts.get("accounts", []):
-            account_type = account.get("type") or {}
-            if account_type.get("name") != "brokerage":
-                continue
-            holdings = await MonarchMoney.get_account_holdings(self, account["id"])
-            all_holdings["accounts"].append(
+        brokerage_accounts = [
+            account
+            for account in accounts.get("accounts", [])
+            if (account.get("type") or {}).get("name") == "brokerage"
+        ]
+        # Fetch holdings for all brokerage accounts concurrently so elapsed
+        # time scales with the slowest request rather than the sum of all.
+        holdings_list = await asyncio.gather(
+            *(
+                MonarchMoney.get_account_holdings(self, account["id"])
+                for account in brokerage_accounts
+            )
+        )
+        return {
+            "accounts": [
                 {
                     "id": account["id"],
                     "displayName": account.get("displayName"),
                     "holdings": holdings,
                 }
-            )
-        return all_holdings
+                for account, holdings in zip(brokerage_accounts, holdings_list)
+            ]
+        }
 
     async def get_account_history(self, account_id: int) -> Dict[str, Any]:
         """
