@@ -3,10 +3,16 @@ name: monarchmoney build
 on:
   push:
   pull_request:
+  status:
   workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: read
 
 jobs:
   black:
+    if: github.event_name != 'status'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +23,7 @@ jobs:
           version: "24.8.0"
   unit_tests:
     name: unit-tests
+    if: github.event_name != 'status'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,3 +38,27 @@ jobs:
       - name: Run tests with unittest
         run: |
           python -m unittest discover -s tests -q
+
+  full-tests-gate:
+    name: full-tests-gate
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'status' && github.event.context == 'full-tests-local')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check local full test status
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.event.repository.full_name }}
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.event.sha }}
+        run: |
+          set -euo pipefail
+          latest_state="$(gh api "repos/${REPOSITORY}/commits/${COMMIT_SHA}/statuses?per_page=100" \
+            --jq '[.[] | select(.context == "full-tests-local")] | first | .state // empty')"
+          if [ "${latest_state}" != "success" ]; then
+            latest_state="${latest_state:-missing}"
+            echo "full_tests.py status is ${latest_state} for ${COMMIT_SHA}."
+            echo "Run python3 full_tests.py locally, then re-run this check."
+            exit 1
+          fi
+          echo "full_tests.py status is success for ${COMMIT_SHA}."
