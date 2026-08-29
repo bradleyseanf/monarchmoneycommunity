@@ -6,6 +6,9 @@ builddist:
 install:
 	pip install .
 
+install-hooks:
+	git config core.hooksPath .githooks
+
 twine:
 	twine upload dist/monarchmoney*
 

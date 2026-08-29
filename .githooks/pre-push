@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+python_bin="${PYTHON:-python3}"
+if [ -x "$repo_root/.venv/bin/python" ]; then
+    python_bin="$repo_root/.venv/bin/python"
+fi
+
+echo "Running run_tests.py before push..."
+if ! "$python_bin" run_tests.py; then
+    echo "Push blocked: run_tests.py failed." >&2
+    exit 1
+fi
