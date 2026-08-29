@@ -5,13 +5,25 @@ set -eu
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-python_bin="${PYTHON:-python3}"
-if [ -x "$repo_root/.venv/bin/python" ]; then
+python_bin="${PYTHON:-}"
+if [ -z "$python_bin" ] && [ -x "$repo_root/.venv/bin/python" ]; then
     python_bin="$repo_root/.venv/bin/python"
+fi
+python_bin="${python_bin:-python3}"
+
+if ! "$python_bin" -c 'import aiohttp, gql, graphql, oathtool' >/dev/null 2>&1; then
+    echo "Push blocked: required Python dependencies are missing." >&2
+    echo "Install them with: $python_bin -m pip install -r requirements.txt" >&2
+    exit 1
+fi
+
+if [ ! -r /dev/tty ]; then
+    echo "Push blocked: run this push from an interactive terminal." >&2
+    exit 1
 fi
 
 echo "Running run_tests.py before push..."
-if ! "$python_bin" run_tests.py; then
+if ! "$python_bin" run_tests.py </dev/tty; then
     echo "Push blocked: run_tests.py failed." >&2
     exit 1
 fi

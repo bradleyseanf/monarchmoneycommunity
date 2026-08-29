@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import textwrap
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,51 @@ READ_METHOD_PREFIXES = ("get_", "find_", "is_", "list_", "search_")
 
 class SmokeTestError(Exception):
     """An error raised by the test runner."""
+
+
+class ConsentPrompt:
+    """Require explicit consent before accessing a live account."""
+
+    PARAGRAPHS = (
+        "TO SUBMIT A PULL REQUEST WITH THIS LIBRARY, YOU MUST RUN THE LOCAL TEST "
+        "SUITE DIRECTLY WITH YOUR MONARCH MONEY ACCOUNT.",
+        "THE REQUESTS ARE NON-MUTATING READ-ONLY METHODS. THE CHECKS ONLY VALIDATE "
+        "THAT VALID JSON IS RETURNED.",
+        "THE READ-ONLY REQUESTS GO TO MONARCH MONEY. RETURNED DATA IS USED ONLY ON "
+        "YOUR DEVICE DURING THE LOCAL PRE-PUSH CHECK AND IS NOT SENT TO THIS PROJECT "
+        "OR GITHUB.",
+        "IF YOU ACCEPT THESE CONDITIONS, PLEASE CONTINUE.",
+    )
+
+    @classmethod
+    def request(cls) -> bool:
+        width = min(
+            88,
+            max(20, shutil.get_terminal_size((DEFAULT_TERMINAL_WIDTH, 24)).columns - 4),
+        )
+        print()
+        print("WARNING")
+        print("-" * width)
+        for paragraph in cls.PARAGRAPHS:
+            print(
+                textwrap.fill(
+                    paragraph,
+                    width=width,
+                    break_long_words=False,
+                    break_on_hyphens=False,
+                )
+            )
+            print()
+        print("-" * width)
+        while True:
+            answer = input("Continue [y/n]: ").strip().lower()
+            if answer in {"y", "yes"}:
+                print()
+                return True
+            if answer in {"n", "no"}:
+                print()
+                return False
+            print("Please enter y or n: ", end="", flush=True)
 
 
 def _truncate(value: Any, limit: int) -> str:
@@ -397,8 +443,12 @@ class SessionAuthenticator:
                 detail += f": {saved_error}"
             raise SmokeTestError(detail)
 
-        email = os.getenv("MONARCH_EMAIL") or input("Email: ").strip()
-        password = os.getenv("MONARCH_PASSWORD") or getpass.getpass("Password: ")
+        email = os.getenv("MONARCH_EMAIL", "").strip()
+        if not email:
+            email = self._prompt_email()
+        password = os.getenv("MONARCH_PASSWORD", "")
+        if not password:
+            password = self._prompt_password()
         try:
             await client.login(
                 email=email,
@@ -408,7 +458,9 @@ class SessionAuthenticator:
                 mfa_secret_key=os.getenv("MONARCH_MFA_SECRET_KEY"),
             )
         except RequireMFAException:
-            code = os.getenv("MONARCH_MFA_CODE") or input("MFA code: ").strip()
+            code = os.getenv("MONARCH_MFA_CODE", "").strip()
+            if not code:
+                code = self._prompt_mfa_code()
             await client.multi_factor_authenticate(
                 email,
                 password,
@@ -423,6 +475,30 @@ class SessionAuthenticator:
                 ) from error
             raise
         return f"new session saved to {self.session_file}"
+
+    @staticmethod
+    def _prompt_email() -> str:
+        while True:
+            email = input("Email: ").strip()
+            if email:
+                return email
+            print("Email cannot be blank.")
+
+    @staticmethod
+    def _prompt_password() -> str:
+        while True:
+            password = getpass.getpass("Password: ")
+            if password:
+                return password
+            print("Password cannot be blank.")
+
+    @staticmethod
+    def _prompt_mfa_code() -> str:
+        while True:
+            code = input("MFA code: ").strip()
+            if code:
+                return code
+            print("MFA code cannot be blank.")
 
 
 class LiveReadSuite:
@@ -485,8 +561,6 @@ class LiveReadSuite:
         try:
             positional, keyword = self.resolver.resolve(method)
             result = await method(*positional, **keyword)
-            if method_name == "get_budgets":
-                result = None
             if result is None:
                 if self.label == "TypedMonarchMoney" and "holdings" in method_name:
                     self.reporter.pass_note(label, "no holdings")
@@ -544,11 +618,15 @@ class TestRunner:
         self.reporter = TerminalReporter(args.color, args.no_color)
 
     def run(self) -> int:
-        try:
-            live_passed = asyncio.run(self._run_live_suites())
-        except Exception as error:  # noqa: BLE001
-            self.reporter.fail("live-tests", error)
+        if not ConsentPrompt.request():
+            self.reporter.fail_note("consent", "live account testing was declined")
             live_passed = False
+        else:
+            try:
+                live_passed = asyncio.run(self._run_live_suites())
+            except Exception as error:  # noqa: BLE001
+                self.reporter.fail("live-tests", error)
+                live_passed = False
 
         unit_passed = UnitTestSuite(self.root, self.reporter).run()
         all_passed = live_passed and unit_passed
