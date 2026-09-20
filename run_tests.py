@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Sequence, Tuple, Type
 
-from monarchmoney import MonarchMoney, RequireMFAException
+from monarchmoney import CaptchaRequiredException, MonarchMoney, RequireMFAException
 from typedmonarchmoney import TypedMonarchMoney
 
 DEFAULT_SESSION_FILE = Path(".mm") / "mm_session.pickle"
@@ -32,6 +32,10 @@ READ_METHOD_PREFIXES = ("get_", "find_", "is_", "list_", "search_")
 
 class SmokeTestError(Exception):
     """An error raised by the test runner."""
+
+
+class MissingSampleError(SmokeTestError):
+    """A read probe requires data that this household does not have."""
 
 
 class ConsentPrompt:
@@ -143,6 +147,11 @@ class TerminalReporter:
         )
         self.passed = 0
         self.failed = 0
+        self.skipped = 0
+
+    def skip(self, label: str, detail: str) -> None:
+        self.skipped += 1
+        self._write("SKIP", label, detail)
 
     def pass_result(self, label: str, result: Any) -> None:
         self.passed += 1
@@ -169,7 +178,10 @@ class TerminalReporter:
         self._write("FAIL", label, detail)
 
     def summary(self) -> None:
-        text = f"TOTAL: {self.passed} passed, {self.failed} failed"
+        text = (
+            f"TOTAL: {self.passed} passed, {self.failed} failed, "
+            f"{self.skipped} skipped"
+        )
         if self.use_color:
             color = "\033[32m" if self.failed == 0 else "\033[31m"
             text = f"{color}{text}\033[0m"
@@ -183,7 +195,11 @@ class TerminalReporter:
         detail = _truncate(detail, max(20, self.width - len(visible_prefix) - 3))
         token = f"[{status}]"
         if self.use_color:
-            color = "\033[32m" if status == "PASS" else "\033[31m"
+            color = {
+                "PASS": "\033[32m",
+                "FAIL": "\033[31m",
+                "SKIP": "\033[33m",
+            }[status]
             token = f"{color}{token}\033[0m"
         print(f"{token} {label} - {detail}")
 
@@ -192,10 +208,10 @@ class TerminalReporter:
 class SampleValues:
     """Values used to satisfy common read-method parameters."""
 
-    account_id: str = "0"
-    transaction_id: str = "0"
-    category_id: str = "0"
-    category_group_id: str = "0"
+    account_id: Optional[str] = None
+    transaction_id: Optional[str] = None
+    category_id: Optional[str] = None
+    category_group_id: Optional[str] = None
     account_object: Any = None
 
     def update(self, method_name: str, result: Any) -> None:
@@ -205,10 +221,8 @@ class SampleValues:
                 accounts = list(result.values())
             account = self._preferred_account(accounts, self.account_id)
             account_id = self._object_id(account)
-            if account_id is not None:
-                self.account_id = account_id
-            if not isinstance(account, dict):
-                self.account_object = account
+            self.account_id = account_id
+            self.account_object = account if not isinstance(account, dict) else None
 
         if method_name == "get_all_holdings" and isinstance(result, dict):
             account = self._account_with_holdings(result.get("accounts"))
@@ -219,27 +233,24 @@ class SampleValues:
         if method_name == "get_transactions" and isinstance(result, dict):
             transactions = result.get("allTransactions", {}).get("results", [])
             transaction_id = self._first_id(transactions)
-            if transaction_id is not None:
-                self.transaction_id = transaction_id
+            self.transaction_id = transaction_id
 
         if method_name == "get_transaction_categories" and isinstance(result, dict):
             category_id = self._first_id(result.get("categories"))
-            if category_id is not None:
-                self.category_id = category_id
+            self.category_id = category_id
 
         if method_name == "get_transaction_category_groups" and isinstance(
             result, dict
         ):
             group_id = self._first_id(result.get("categoryGroups"))
-            if group_id is not None:
-                self.category_group_id = group_id
+            self.category_group_id = group_id
 
     @classmethod
-    def _preferred_account(cls, accounts: Any, preferred_id: str) -> Any:
+    def _preferred_account(cls, accounts: Any, preferred_id: Optional[str]) -> Any:
         if not isinstance(accounts, list):
             return None
         for account in accounts:
-            if cls._object_id(account) == preferred_id:
+            if preferred_id is not None and cls._object_id(account) == preferred_id:
                 return account
         for account in accounts:
             account_type = cls._account_type(account)
@@ -344,9 +355,8 @@ class ArgumentResolver:
             if value is None and parameter.default is not inspect.Parameter.empty:
                 continue
             if value is None:
-                raise SmokeTestError(
-                    f"cannot build a safe value for required parameter "
-                    f"{parameter.name}"
+                raise MissingSampleError(
+                    f"no sample available for required parameter {parameter.name}"
                 )
 
             if parameter.kind == inspect.Parameter.POSITIONAL_ONLY:
@@ -359,6 +369,10 @@ class ArgumentResolver:
         name = parameter.name.lower()
         if name in {"limit", "page_size"}:
             return 10
+        # Keep optional filters (including dates and booleans) at their defaults.
+        # Only pagination size is overridden to keep live responses small.
+        if parameter.default is not inspect.Parameter.empty:
+            return None
         if name in {"offset", "page"}:
             return 0
         if name == "start_date":
@@ -374,23 +388,19 @@ class ArgumentResolver:
         if name in {"account_id", "user_id", "institution_id"}:
             return self._account_id(parameter.annotation)
         if name in {"account_ids", "user_ids", "institution_ids"}:
-            return [self.samples.account_id]
+            return [self.samples.account_id] if self.samples.account_id else None
         if name in {"transaction_id", "merchant_id"}:
             return self.samples.transaction_id if name == "transaction_id" else "0"
         if name == "category_id":
             return self.samples.category_id
         if name == "category_ids":
-            return [self.samples.category_id]
+            return [self.samples.category_id] if self.samples.category_id else None
         if name in {"category_group_id", "group_id"}:
             return self.samples.category_group_id
         if name in {"query", "search"}:
             return ""
 
         annotation = str(parameter.annotation)
-        if parameter.default is not inspect.Parameter.empty:
-            if "bool" in annotation:
-                return False
-            return None
         if "bool" in annotation:
             return False
         if "list" in annotation.lower():
@@ -410,14 +420,16 @@ class ArgumentResolver:
         return ""
 
     def _account_id(self, annotation: Any) -> Any:
+        if self.samples.account_id is None:
+            return None
         annotation_text = str(annotation)
         if annotation is int or (
             "int" in annotation_text and "str" not in annotation_text
         ):
             try:
                 return int(self.samples.account_id)
-            except ValueError:
-                return 0
+            except ValueError as error:
+                raise SmokeTestError("sample account ID is not an integer") from error
         return self.samples.account_id
 
 
@@ -443,6 +455,11 @@ class SessionAuthenticator:
                 detail += f": {saved_error}"
             raise SmokeTestError(detail)
 
+        cookie_string = os.getenv("MONARCH_COOKIE_STRING", "").strip()
+        if cookie_string:
+            await client.login_with_cookies(cookie_string, save_session=True)
+            return f"cookie session saved to {self.session_file}"
+
         email = os.getenv("MONARCH_EMAIL", "").strip()
         if not email:
             email = self._prompt_email()
@@ -450,24 +467,33 @@ class SessionAuthenticator:
         if not password:
             password = self._prompt_password()
         try:
-            await client.login(
-                email=email,
-                password=password,
-                use_saved_session=False,
-                save_session=True,
-                mfa_secret_key=os.getenv("MONARCH_MFA_SECRET_KEY"),
+            try:
+                await client.login(
+                    email=email,
+                    password=password,
+                    use_saved_session=False,
+                    save_session=True,
+                    mfa_secret_key=os.getenv("MONARCH_MFA_SECRET_KEY"),
+                )
+            except RequireMFAException:
+                code = os.getenv("MONARCH_MFA_CODE", "").strip()
+                if not code:
+                    code = self._prompt_mfa_code()
+                await client.multi_factor_authenticate(
+                    email,
+                    password,
+                    code,
+                    trusted_device=True,
+                )
+                client.save_session(str(self.session_file))
+        except CaptchaRequiredException:
+            print(
+                "Password login requires CAPTCHA. Log in through your browser, "
+                "then copy the Cookie request header containing session_id and csrftoken."
             )
-        except RequireMFAException:
-            code = os.getenv("MONARCH_MFA_CODE", "").strip()
-            if not code:
-                code = self._prompt_mfa_code()
-            await client.multi_factor_authenticate(
-                email,
-                password,
-                code,
-                trusted_device=True,
-            )
-            client.save_session(str(self.session_file))
+            cookie_string = getpass.getpass("Cookie header (hidden): ").strip()
+            await client.login_with_cookies(cookie_string, save_session=True)
+            return f"cookie session saved to {self.session_file}"
         except Exception as error:
             if saved_error is not None:
                 raise SmokeTestError(
@@ -560,6 +586,14 @@ class LiveReadSuite:
         label = f"{self.label}.{method_name}"
         try:
             positional, keyword = self.resolver.resolve(method)
+        except MissingSampleError as error:
+            self.reporter.skip(label, str(error))
+            return True
+        except Exception as error:  # noqa: BLE001
+            self.reporter.fail(label, error)
+            return False
+
+        try:
             result = await method(*positional, **keyword)
             if result is None:
                 if self.label == "TypedMonarchMoney" and "holdings" in method_name:

@@ -31,6 +31,7 @@ Clone this repository from Git
 Import the library as `monarchmoney` after installation.
 
 This package pins `gql` to `4.0`.
+
 # Instantiate & Login
 
 There are two ways to use this library: interactive and non-interactive.
@@ -335,6 +336,22 @@ The typed client returns `MonarchAccount`, `MonarchSubscription`, `MonarchCashfl
 Any and all contributions - code, documentation, feature requests, feedback - are welcome!
 
 If you plan to submit up a pull request, you can expect a timely review.  There aren't any strict requirements around the environment you'll need.
+
+## Opening a pull request
+
+This library requires a pre-push check requiring that you log into your Monarch account and test all NON-MUTATING methods return valid JSON data including those of new types. If any fail, the push fails.
+
+```sh
+# One-time setup
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+make install-hooks
+```
+
+```sh
+# Automatically runs run_tests.py before pushing
+git push
+```
 
 # FAQ
 
