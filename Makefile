@@ -6,6 +6,9 @@ builddist:
 install:
 	pip install .
 
+install-hooks:
+	python3 scripts/install_hooks.py
+
 twine:
 	twine upload dist/monarchmoney*
 

@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   black:
     runs-on: ubuntu-latest
@@ -16,6 +19,7 @@ jobs:
           src: .
           version: "24.8.0"
   unit_tests:
+    name: unit-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,4 +33,4 @@ jobs:
           pip install -r requirements.txt
       - name: Run tests with unittest
         run: |
-          python -m unittest tests/test_monarchmoney.py tests/test_monarchmoney_typed.py
+          python -m unittest discover -s tests -q

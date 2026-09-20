@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import json
 from gql import Client
+from graphql import print_ast
 from monarchmoney import MonarchMoney
 from monarchmoney.monarchmoney import LoginFailedException
 
@@ -23,6 +24,82 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             pickle.dump(session_data, fh)
         self.monarch_money = MonarchMoney()
         self.monarch_money.load_session("temp_session.pickle")
+
+    @patch.object(Client, "execute_async")
+    async def test_get_transaction_rules_includes_complete_rule_fields(
+        self, mock_execute_async
+    ):
+        """Transaction rules include every criterion and action used by the web UI."""
+        expected = {
+            "transactionRules": [
+                {
+                    "id": "rule-1",
+                    "originalStatementCriteria": [
+                        {"operator": "contains", "value": "core account"}
+                    ],
+                    "merchantNameCriteria": [{"operator": "eq", "value": "fees"}],
+                    "criteriaOwnerIsJoint": False,
+                    "criteriaOwnerUserIds": ["user-1"],
+                    "criteriaOwnerUsers": [{"id": "user-1", "displayName": "Owner"}],
+                    "criteriaBusinessEntityIds": ["business-1"],
+                    "criteriaBusinessEntityIsUnassigned": False,
+                    "criteriaBusinessEntities": [
+                        {"id": "business-1", "name": "Business"}
+                    ],
+                    "linkSavingsGoalAction": {"id": "goal-1", "name": "Reserve"},
+                    "setLinkToPaydownBudgetAction": True,
+                    "actionSetOwnerIsJoint": False,
+                    "actionSetOwner": {"id": "user-1", "displayName": "Owner"},
+                    "actionSetBusinessEntity": {
+                        "id": "business-1",
+                        "name": "Business",
+                    },
+                    "actionSetBusinessEntityIsUnassigned": False,
+                    "splitTransactionsAction": {
+                        "splitsInfo": [
+                            {
+                                "savingsGoalId": "goal-1",
+                                "ownerUserId": "user-1",
+                                "ownerIsJoint": False,
+                                "businessEntityId": "business-1",
+                                "businessEntityIsUnassigned": False,
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+        mock_execute_async.return_value = expected
+
+        result = await self.monarch_money.get_transaction_rules()
+
+        self.assertEqual(result, expected)
+        request = mock_execute_async.call_args.kwargs["request"]
+        query = print_ast(request.document)
+        required_fields = (
+            "originalStatementCriteria",
+            "merchantNameCriteria",
+            "criteriaOwnerIsJoint",
+            "criteriaOwnerUserIds",
+            "criteriaOwnerUsers",
+            "criteriaBusinessEntityIds",
+            "criteriaBusinessEntityIsUnassigned",
+            "criteriaBusinessEntities",
+            "linkSavingsGoalAction",
+            "setLinkToPaydownBudgetAction",
+            "actionSetOwnerIsJoint",
+            "actionSetOwner",
+            "actionSetBusinessEntity",
+            "actionSetBusinessEntityIsUnassigned",
+            "savingsGoalId",
+            "ownerUserId",
+            "ownerIsJoint",
+            "businessEntityId",
+            "businessEntityIsUnassigned",
+        )
+        for field in required_fields:
+            with self.subTest(field=field):
+                self.assertIn(field, query)
 
     @patch.object(Client, "execute_async")
     async def test_get_accounts(self, mock_execute_async):
@@ -206,6 +283,66 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         )
 
     @patch.object(Client, "execute_async")
+    async def test_get_all_holdings(self, mock_execute_async):
+        """
+        Test the get_all_holdings method.
+        """
+        # First call returns the account list (3 brokerage accounts among 7),
+        # then one holdings result per brokerage account
+        mock_execute_async.side_effect = [
+            TestMonarchMoney.loadTestData(filename="get_accounts.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+            TestMonarchMoney.loadTestData(filename="get_account_holdings.json"),
+        ]
+
+        # Call the get_all_holdings method
+        result = await self.monarch_money.get_all_holdings()
+
+        # Assert one accounts query plus one holdings query per brokerage account
+        self.assertEqual(
+            mock_execute_async.call_count,
+            4,
+            "Expected 4 calls: 1 for accounts, 3 for holdings",
+        )
+
+        # Assert that the result is not None
+        self.assertIsNotNone(result, "Expected result to not be None")
+
+        # Assert only the brokerage accounts are included
+        self.assertEqual(
+            len(result["accounts"]),
+            3,
+            "Expected holdings for 3 brokerage accounts",
+        )
+        self.assertEqual(
+            result["accounts"][0]["id"],
+            "900000000",
+            "Expected first brokerage account id to be '900000000'",
+        )
+        self.assertEqual(
+            result["accounts"][0]["displayName"],
+            "Brokerage",
+            "Expected first brokerage account displayName to be 'Brokerage'",
+        )
+        self.assertEqual(
+            len(
+                result["accounts"][0]["holdings"]["portfolio"]["aggregateHoldings"][
+                    "edges"
+                ]
+            ),
+            3,
+            "Expected 3 holdings in the first brokerage account",
+        )
+        self.assertEqual(
+            result["accounts"][1]["holdings"]["portfolio"]["aggregateHoldings"][
+                "edges"
+            ][1]["node"]["security"]["ticker"],
+            "GOOG",
+            "Expected second holding ticker to be 'GOOG'",
+        )
+
+    @patch.object(Client, "execute_async")
     async def test_get_budgets(self, mock_execute_async):
         """
         Test the get_accounts method.
@@ -225,6 +362,51 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(len(result["categoryGroups"]), 2, "Expected 2 category groups")
         self.assertEqual(len(result["goalsV2"]), 1, "Expected 1 goal")
+
+    @patch.object(Client, "execute_async")
+    async def test_get_household_members(self, mock_execute_async):
+        """
+        Test the get_household_members method.
+        """
+        mock_execute_async.return_value = {
+            "myHousehold": {
+                "users": [
+                    {
+                        "id": "user-1",
+                        "name": "Alex",
+                        "displayName": "Alex",
+                        "householdRole": "OWNER",
+                    },
+                    {
+                        "id": "user-2",
+                        "name": "Sam",
+                        "displayName": "Sam",
+                        "householdRole": "MEMBER",
+                    },
+                ]
+            }
+        }
+        result = await self.monarch_money.get_household_members()
+        mock_execute_async.assert_called_once()
+        self.assertIsNotNone(result, "Expected result to not be None")
+        users = result["myHousehold"]["users"]
+        self.assertEqual(len(users), 2, "Expected 2 household members")
+        self.assertEqual(users[0]["id"], "user-1")
+        self.assertEqual(users[0]["name"], "Alex")
+        self.assertEqual(users[0]["displayName"], "Alex")
+        self.assertEqual(users[0]["householdRole"], "OWNER")
+        self.assertEqual(users[1]["id"], "user-2")
+        self.assertEqual(users[1]["householdRole"], "MEMBER")
+
+    @patch.object(Client, "execute_async")
+    async def test_get_household_members_empty(self, mock_execute_async):
+        """
+        Test the get_household_members method with no members.
+        """
+        mock_execute_async.return_value = {"myHousehold": {"users": []}}
+        result = await self.monarch_money.get_household_members()
+        mock_execute_async.assert_called_once()
+        self.assertEqual(result["myHousehold"]["users"], [])
 
     async def test_login(self):
         """
@@ -256,6 +438,41 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             kwargs["variable_values"]["filters"]["needsReview"],
             "Expected needsReview filter to be True",
         )
+
+    @patch.object(Client, "execute_async")
+    async def test_update_transaction_owner(self, mock_execute_async):
+        """Assign a household member or explicitly restore Shared ownership."""
+        for owner_user_id, expected in (("user-1", "user-1"), ("", None)):
+            with self.subTest(owner_user_id=owner_user_id):
+                mock_execute_async.reset_mock()
+                await self.monarch_money.update_transaction(
+                    "txn-1", owner_user_id=owner_user_id
+                )
+                mock_execute_async.assert_called_once()
+                self.assertEqual(
+                    mock_execute_async.call_args.kwargs["variable_values"]["input"],
+                    {
+                        "id": "txn-1",
+                        "category": None,
+                        "name": None,
+                        "ownerUserId": expected,
+                    },
+                )
+
+    @patch.object(Client, "execute_async")
+    async def test_update_transaction_preserves_owner(self, mock_execute_async):
+        """Omitted or None ownership must not turn a category edit into Shared."""
+        for kwargs in ({}, {"owner_user_id": None}):
+            with self.subTest(kwargs=kwargs):
+                mock_execute_async.reset_mock()
+                await self.monarch_money.update_transaction(
+                    "txn-1", category_id="cat-1", **kwargs
+                )
+                mock_execute_async.assert_called_once()
+                self.assertEqual(
+                    mock_execute_async.call_args.kwargs["variable_values"]["input"],
+                    {"id": "txn-1", "category": "cat-1", "name": None},
+                )
 
     @patch("builtins.input", return_value="")
     @patch("getpass.getpass", return_value="")
@@ -307,6 +524,60 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         This method will be called after each test method is executed.
         """
         self.monarch_money.delete_session("temp_session.pickle")
+
+
+class TestDuplicateTransactions(unittest.IsolatedAsyncioTestCase):
+    async def test_page_limit_preserves_duplicates_and_default_full_scan(self):
+        transactions = [
+            {
+                "id": str(index),
+                "date": "2026-09-20",
+                "amount": -10,
+                "plaidName": "same reference",
+                "account": {"id": "123"},
+                "createdAt": str(index),
+            }
+            for index in range(4)
+        ]
+
+        async def page(**kwargs):
+            offset = kwargs["offset"]
+            return {
+                "allTransactions": {
+                    "results": transactions[offset : offset + kwargs["limit"]],
+                    "totalCount": len(transactions),
+                }
+            }
+
+        for options, expected_calls, expected_count in (
+            ({}, 2, 4),
+            ({"max_pages": 1}, 1, 2),
+            ({"max_pages": 2}, 2, 4),
+        ):
+            with self.subTest(options=options):
+                client = MonarchMoney()
+                client.get_transactions = AsyncMock(side_effect=page)
+                result = await client.find_duplicate_transactions(
+                    page_size=2, **options
+                )
+                self.assertEqual(client.get_transactions.await_count, expected_calls)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(len(result[0]["transactions"]), expected_count)
+                self.assertEqual(
+                    [
+                        call.kwargs["offset"]
+                        for call in client.get_transactions.await_args_list
+                    ],
+                    list(range(0, expected_count, 2)),
+                )
+
+    async def test_nonpositive_page_limit_is_rejected_before_requests(self):
+        client = MonarchMoney()
+        client.get_transactions = AsyncMock()
+        for max_pages in (0, -1):
+            with self.assertRaisesRegex(ValueError, "max_pages must be positive"):
+                await client.find_duplicate_transactions(max_pages=max_pages)
+        client.get_transactions.assert_not_awaited()
 
 
 if __name__ == "__main__":

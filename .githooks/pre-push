@@ -1,0 +1,64 @@
+#!/bin/sh
+
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+head="$(git rev-parse --verify HEAD)"
+has_updates=false
+while read -r local_ref local_oid remote_ref remote_oid; do
+    # Deleted refs have no code to test.
+    if [ "$local_ref" = "(delete)" ]; then
+        continue
+    fi
+    has_updates=true
+    pushed_commit="$(git rev-parse --verify "$local_oid^{commit}" 2>/dev/null)" || pushed_commit=""
+    if [ "$pushed_commit" != "$head" ]; then
+        echo "Push blocked: $local_ref does not point to the checked-out commit." >&2
+        echo "Check out the branch being pushed and push it separately." >&2
+        exit 1
+    fi
+done
+
+if [ "$has_updates" = false ]; then
+    exit 0
+fi
+
+verify_checkout() {
+    checkout_head="$(git rev-parse --verify HEAD)" || return 1
+    checkout_status="$(git status --porcelain --untracked-files=all --ignore-submodules=none)" || return 1
+    if [ "$checkout_head" != "$head" ] || [ -n "$checkout_status" ]; then
+        echo "Push blocked: the checkout must match the pushed commit and be clean." >&2
+        echo "Commit or stash your changes (including untracked files), then retry." >&2
+        return 1
+    fi
+}
+
+verify_checkout
+
+python_bin="${PYTHON:-}"
+if [ -z "$python_bin" ] && [ -x "$repo_root/.venv/bin/python" ]; then
+    python_bin="$repo_root/.venv/bin/python"
+fi
+python_bin="${python_bin:-python3}"
+
+if ! "$python_bin" -c 'import aiohttp, gql, graphql, oathtool' >/dev/null 2>&1; then
+    echo "Push blocked: required Python dependencies are missing." >&2
+    echo "Install them with: $python_bin -m pip install -r requirements.txt" >&2
+    exit 1
+fi
+
+if [ ! -r /dev/tty ]; then
+    echo "Push blocked: run this push from an interactive terminal." >&2
+    exit 1
+fi
+
+echo "Running run_tests.py before push..."
+if ! "$python_bin" run_tests.py </dev/tty; then
+    echo "Push blocked: run_tests.py failed." >&2
+    exit 1
+fi
+
+# The live checks can take time; do not push if the checkout changed meanwhile.
+verify_checkout

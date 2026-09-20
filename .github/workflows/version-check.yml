@@ -1,0 +1,77 @@
+name: Validate package version
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Check release version
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Ensure package version is newer than main
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import subprocess
+          import sys
+
+          base_sha = os.environ["BASE_SHA"]
+          head_sha = os.environ["HEAD_SHA"]
+          version_file = "monarchmoney/__init__.py"
+
+          changed_files = subprocess.check_output(
+              ["git", "diff", "--name-only", base_sha, head_sha],
+              text=True,
+          ).splitlines()
+
+          release_affecting = any(
+              path.startswith(("monarchmoney/", "typedmonarchmoney/"))
+              or path in {"setup.py", "setup.cfg", "pyproject.toml"}
+              for path in changed_files
+          )
+
+          if not release_affecting:
+              print("No release-affecting files changed; version check passes.")
+              sys.exit(0)
+
+          pattern = re.compile(r'__version__\s*=\s*["\'](\d+\.\d+\.\d+)["\']')
+
+          def read_version(ref):
+              contents = subprocess.check_output(
+                  ["git", "show", f"{ref}:{version_file}"],
+                  text=True,
+              )
+              match = pattern.search(contents)
+              if not match:
+                  raise SystemExit(f"Could not find a semantic version in {ref}:{version_file}")
+              return tuple(int(part) for part in match.group(1).split("."))
+
+          base_version = read_version(base_sha)
+          head_version = read_version(head_sha)
+
+          print(f"main version: {'.'.join(map(str, base_version))}")
+          print(f"PR version:   {'.'.join(map(str, head_version))}")
+
+          if head_version <= base_version:
+              raise SystemExit(
+                  "PR version must be greater than the current main version. "
+                  "Update monarchmoney/__init__.py before merging."
+              )
+          PY

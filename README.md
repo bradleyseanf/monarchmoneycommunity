@@ -31,6 +31,7 @@ Clone this repository from Git
 Import the library as `monarchmoney` after installation.
 
 This package pins `gql` to `4.0`.
+
 # Instantiate & Login
 
 There are two ways to use this library: interactive and non-interactive.
@@ -134,6 +135,10 @@ As of writing this README, the following methods are supported:
       <td>gets all of the securities in a brokerage or similar type of account</td>
     </tr>
     <tr>
+      <td><code>get_all_holdings</code></td>
+      <td>gets the securities in every brokerage or similar type of account in one call (no parameters) — example: <code>await mm.get_all_holdings()</code></td>
+    </tr>
+    <tr>
       <td><code>get_account_type_options</code></td>
       <td>all account types and their subtypes available in Monarch Money</td>
     </tr>
@@ -182,6 +187,10 @@ As of writing this README, the following methods are supported:
       <td>all category groups configured in the account</td>
     </tr>
     <tr>
+      <td><code>get_household_members</code></td>
+      <td>gets household member IDs, names, display names, and roles</td>
+    </tr>
+    <tr>
       <td><code>get_transaction_details</code></td>
       <td>gets detailed transaction data for a single transaction</td>
     </tr>
@@ -192,6 +201,10 @@ As of writing this README, the following methods are supported:
     <tr>
       <td><code>get_transaction_tags</code></td>
       <td>gets all of the tags configured in the account</td>
+    </tr>
+    <tr>
+      <td><code>get_transaction_rules</code></td>
+      <td>gets all transaction rules configured in the account, in priority order</td>
     </tr>
     <tr>
       <td><code>get_cashflow</code></td>
@@ -311,7 +324,7 @@ As of writing this README, the following methods are supported:
 
 ## Typed Client
 
-If you want typed account, subscription, and holdings models, import the typed client:
+If you want typed account, budget, subscription, and holdings models, import the typed client:
 
 ```python
 from typedmonarchmoney import TypedMonarchMoney
@@ -320,13 +333,29 @@ mm = TypedMonarchMoney()
 accounts = await mm.get_accounts()
 ```
 
-The typed client returns `MonarchAccount`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` objects instead of raw dictionaries.
+The typed client provides `MonarchAccount`, `MonarchBudget`, `MonarchBudgetMonth`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` models.
 
 # Contributing
 
 Any and all contributions - code, documentation, feature requests, feedback - are welcome!
 
 If you plan to submit up a pull request, you can expect a timely review.  There aren't any strict requirements around the environment you'll need.
+
+## Opening a pull request
+
+This library requires a pre-push check requiring that you log into your Monarch account and test all NON-MUTATING methods return valid JSON data including those of new types. If any fail, the push fails.
+
+```sh
+# One-time setup
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+make install-hooks
+```
+
+```sh
+# Automatically runs run_tests.py before pushing
+git push
+```
 
 # FAQ
 

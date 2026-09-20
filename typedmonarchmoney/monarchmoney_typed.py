@@ -17,6 +17,12 @@ def _parse_float(value: Any, default: float = -1.0) -> float:
         return default
 
 
+def _parse_optional_float(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+    return float(value)
+
+
 def _parse_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):
         return value
@@ -104,6 +110,34 @@ class MonarchCashflowSummary:
         self.expenses = _parse_float(summary_data.get("sumExpense", -1.0))
         self.savings = _parse_float(summary_data.get("savings", -1.0))
         self.savings_rate = _parse_float(summary_data.get("savingsRate", -1.0))
+
+
+class MonarchBudgetMonth:
+    """Amounts assigned to a budget category for one calendar month."""
+
+    def __init__(self, data: Dict[str, Any]) -> None:
+        self.month = str(data["month"])
+        self.planned_amount = _parse_optional_float(data.get("plannedCashFlowAmount"))
+        self.actual_amount = _parse_optional_float(data.get("actualAmount"))
+        self.remaining_amount = _parse_optional_float(data.get("remainingAmount"))
+
+
+class MonarchBudget:
+    """A Monarch budget category and all monthly amounts returned for it."""
+
+    def __init__(
+        self,
+        data: Dict[str, Any],
+        group_name: str,
+        monthly_amounts: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
+        self.id = str(data.get("id", ""))
+        self.name = data.get("name", "")
+        self.group_name = group_name
+        self.monthly_amounts: Dict[str, MonarchBudgetMonth] = {}
+        for month_data in monthly_amounts or []:
+            month = MonarchBudgetMonth(month_data)
+            self.monthly_amounts[month.month] = month
 
 
 class MonarchSubscription:
@@ -235,6 +269,43 @@ class TypedMonarchMoney(MonarchMoney):
         return MonarchCashflowSummary(
             await super().get_cashflow_summary(limit, start_date, end_date)
         )
+
+    async def get_budgets_as_dict_with_id_key(
+        self,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        use_legacy_goals: bool = False,
+        use_v2_goals: bool = True,
+    ) -> Dict[str, MonarchBudget]:
+        """Return all budget categories keyed by category ID."""
+        data = await super().get_budgets(
+            start_date=start_date,
+            end_date=end_date,
+            use_legacy_goals=use_legacy_goals,
+            use_v2_goals=use_v2_goals,
+        )
+
+        monthly_amounts_by_category: Dict[str, List[Dict[str, Any]]] = {}
+        budget_data = data.get("budgetData") or {}
+        for category_amounts in budget_data.get("monthlyAmountsByCategory", []):
+            category_id = str((category_amounts.get("category") or {}).get("id", ""))
+            if category_id:
+                monthly_amounts_by_category[category_id] = (
+                    category_amounts.get("monthlyAmounts") or []
+                )
+
+        budgets: Dict[str, MonarchBudget] = {}
+        for group in data.get("categoryGroups", []):
+            for category in group.get("categories") or []:
+                category_id = str(category.get("id", ""))
+                if not category_id:
+                    continue
+                budgets[category_id] = MonarchBudget(
+                    category,
+                    group_name=group.get("name", ""),
+                    monthly_amounts=monthly_amounts_by_category.get(category_id),
+                )
+        return budgets
 
     async def get_subscription_details(self) -> MonarchSubscription:
         return MonarchSubscription(await super().get_subscription_details())

@@ -87,6 +87,20 @@ class CaptchaRequiredException(LoginFailedException):
     pass
 
 
+def _to_iso_date(
+    value: Optional[Union[date, datetime, str]],
+) -> Optional[str]:
+    """
+    Normalizes a date, a datetime, or an already-ISO datestring into a
+    YYYY-MM-DD string that can be JSON-encoded for a GraphQL variable.
+    """
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return value
+
+
 class MonarchMoney(object):
     def __init__(
         self,
@@ -236,7 +250,9 @@ class MonarchMoney(object):
             cookies = None
             for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken"]:
                 headers.pop(key, None)
-        async with ClientSession(headers=headers, cookies=cookies) as session:
+        async with ClientSession(
+            headers=headers, cookies=cookies, trust_env=True
+        ) as session:
             resp = await session.post(url, data=data)
             if resp.status != 200:
                 raise RequestFailedException(f"HTTP Code {resp.status}: {resp.reason}")
@@ -375,7 +391,7 @@ class MonarchMoney(object):
         )
 
     async def get_recent_account_balances(
-        self, start_date: Optional[str] = None
+        self, start_date: Optional[Union[date, datetime, str]] = None
     ) -> Dict[str, Any]:
         """
         Retrieves the daily balance for all accounts starting from `start_date`.
@@ -383,7 +399,7 @@ class MonarchMoney(object):
         If `start_date` is None, then the last 31 days are requested.
         """
         if start_date is None:
-            start_date = (date.today() - timedelta(days=31)).isoformat()
+            start_date = date.today() - timedelta(days=31)
 
         query = gql(
             """
@@ -399,7 +415,7 @@ class MonarchMoney(object):
         return await self.gql_call(
             operation="GetAccountRecentBalances",
             graphql_query=query,
-            variables={"startDate": start_date},
+            variables={"startDate": _to_iso_date(start_date)},
         )
 
     async def get_account_snapshots_by_type(self, start_date: str, timeframe: str):
@@ -441,14 +457,17 @@ class MonarchMoney(object):
 
     async def get_aggregate_snapshots(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: Optional[Union[date, datetime, str]] = None,
+        end_date: Optional[Union[date, datetime, str]] = None,
         account_type: Optional[str] = None,
     ) -> dict:
         """
         Retrieves the daily net value of all accounts, optionally between `start_date` and `end_date`,
         and optionally only for accounts of type `account_type`.
-        Both `start_date` and `end_date` are ISO datestrings, formatted as YYYY-MM-DD
+
+        :param start_date: a `date`, a `datetime`, or an ISO datestring formatted as YYYY-MM-DD.
+            Defaults to 150 years ago today, matching the mobile app.
+        :param end_date: a `date`, a `datetime`, or an ISO datestring formatted as YYYY-MM-DD.
         """
         query = gql(
             """
@@ -466,17 +485,15 @@ class MonarchMoney(object):
             # The mobile app defaults to 150 years ago today
             # The mobile app might have a leap year bug, so instead default to setting day=1
             today = date.today()
-            start_date = date(
-                year=today.year - 150, month=today.month, day=1
-            ).isoformat()
+            start_date = date(year=today.year - 150, month=today.month, day=1)
 
         return await self.gql_call(
             operation="GetAggregateSnapshots",
             graphql_query=query,
             variables={
                 "filters": {
-                    "startDate": start_date,
-                    "endDate": end_date,
+                    "startDate": _to_iso_date(start_date),
+                    "endDate": _to_iso_date(end_date),
                     "accountType": account_type,
                 }
             },
@@ -909,9 +926,9 @@ class MonarchMoney(object):
         variables = {
             "input": {
                 "accountIds": [str(account_id)],
-                "endDate": datetime.today().strftime("%Y-%m-%d"),
+                "endDate": _to_iso_date(datetime.today()),
                 "includeHiddenHoldings": True,
-                "startDate": datetime.today().strftime("%Y-%m-%d"),
+                "startDate": _to_iso_date(datetime.today()),
             },
         }
 
@@ -920,6 +937,45 @@ class MonarchMoney(object):
             graphql_query=query,
             variables=variables,
         )
+
+    async def get_all_holdings(self) -> Dict[str, Any]:
+        """
+        Get the holdings information for all brokerage or similar type accounts.
+
+        Convenience wrapper around get_account_holdings that first looks up
+        every account of type "brokerage" and fetches its holdings.
+
+        Returns a dict with an "accounts" list; each entry contains the
+        account's "id", "displayName", and its "holdings" (in the same format
+        returned by get_account_holdings).
+        """
+        # Call the base-class implementations explicitly so subclasses that
+        # override get_accounts/get_account_holdings with different return
+        # types (e.g. TypedMonarchMoney) don't break the raw dict handling.
+        accounts = await MonarchMoney.get_accounts(self)
+        brokerage_accounts = [
+            account
+            for account in accounts.get("accounts", [])
+            if (account.get("type") or {}).get("name") == "brokerage"
+        ]
+        # Fetch holdings for all brokerage accounts concurrently so elapsed
+        # time scales with the slowest request rather than the sum of all.
+        holdings_list = await asyncio.gather(
+            *(
+                MonarchMoney.get_account_holdings(self, account["id"])
+                for account in brokerage_accounts
+            )
+        )
+        return {
+            "accounts": [
+                {
+                    "id": account["id"],
+                    "displayName": account.get("displayName"),
+                    "holdings": holdings,
+                }
+                for account, holdings in zip(brokerage_accounts, holdings_list)
+            ]
+        }
 
     async def get_account_history(self, account_id: int) -> Dict[str, Any]:
         """
@@ -1117,6 +1173,11 @@ class MonarchMoney(object):
                 name
                 id
                 transactionsCount
+                __typename
+              }
+              businessEntity {
+                id
+                name
                 __typename
               }
               tags {
@@ -1420,9 +1481,9 @@ class MonarchMoney(object):
             if last_month < 1:
                 last_month_year -= 1
                 last_month = 12
-            variables["startDate"] = datetime(
-                last_month_year, last_month, first_day_of_last_month
-            ).strftime("%Y-%m-%d")
+            variables["startDate"] = _to_iso_date(
+                datetime(last_month_year, last_month, first_day_of_last_month)
+            )
 
             # Get the last day of next month
             next_month = today.month + 1
@@ -1431,9 +1492,9 @@ class MonarchMoney(object):
                 next_month_year += 1
                 next_month = 1
             last_day_of_next_month = calendar.monthrange(next_month_year, next_month)[1]
-            variables["endDate"] = datetime(
-                next_month_year, next_month, last_day_of_next_month
-            ).strftime("%Y-%m-%d")
+            variables["endDate"] = _to_iso_date(
+                datetime(next_month_year, next_month, last_day_of_next_month)
+            )
 
         elif bool(start_date) != bool(end_date):
             raise Exception(
@@ -1444,6 +1505,32 @@ class MonarchMoney(object):
             operation="GetJointPlanningData",
             graphql_query=query,
             variables=variables,
+        )
+
+    async def get_household_members(self) -> Dict[str, Any]:
+        """
+        Gets household member IDs, names, display names, and roles.
+
+        Returns myHousehold.users with each member's id, name, displayName,
+        and householdRole. Pending invitations are not household members.
+        """
+        query = gql(
+            """
+          query Common_GetHouseHoldMemberSettings {
+            myHousehold {
+              users {
+                id
+                name
+                displayName
+                householdRole
+              }
+            }
+          }
+        """
+        )
+        return await self.gql_call(
+            operation="Common_GetHouseHoldMemberSettings",
+            graphql_query=query,
         )
 
     async def get_subscription_details(self) -> Dict[str, Any]:
@@ -1615,6 +1702,11 @@ class MonarchMoney(object):
             account {
               id
               displayName
+              __typename
+            }
+            businessEntity {
+              id
+              name
               __typename
             }
             tags {
@@ -1977,7 +2069,7 @@ class MonarchMoney(object):
                 "icon": icon,
                 "rolloverEnabled": rollover_enabled,
                 "rolloverType": rollover_type,
-                "rolloverStartMonth": rollover_start_month.strftime("%Y-%m-%d"),
+                "rolloverStartMonth": _to_iso_date(rollover_start_month),
             },
         }
 
@@ -2556,6 +2648,7 @@ class MonarchMoney(object):
         needs_review: Optional[bool] = None,
         reviewed: Optional[bool] = None,
         notes: Optional[str] = None,
+        owner_user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Updates a single existing transaction as identified by the transaction_id
@@ -2591,6 +2684,8 @@ class MonarchMoney(object):
             status from a transaction, use needs_review=True.
         - notes: This parameter is only needed when the user wants to change
             the existing note.  An empty string can be passed to clear out existing notes.
+        - owner_user_id: Member ID from get_household_members() to assign as owner.
+            An empty string sets ownership to Shared. None leaves ownership unchanged.
 
         Examples:
         - To update a note: mm.update_transaction(
@@ -2706,6 +2801,8 @@ class MonarchMoney(object):
             variables["input"].update({"goalId": goal_id})
         if notes is not None:
             variables["input"].update({"notes": notes})
+        if owner_user_id is not None:
+            variables["input"].update({"ownerUserId": owner_user_id or None})
 
         return await self.gql_call(
             operation="Web_TransactionDrawerUpdateTransaction",
@@ -2881,7 +2978,7 @@ class MonarchMoney(object):
         variables = {
             "input": {
                 "rolloverEnabled": rollover_enabled,
-                "rolloverStartMonth": rollover_start_month
+                "rolloverStartMonth": _to_iso_date(rollover_start_month)
                 or self._get_start_of_current_month(),
                 "rolloverStartingBalance": rollover_starting_balance,
                 "budgetSystem": budget_system,
@@ -2939,6 +3036,7 @@ class MonarchMoney(object):
         end_date: Optional[str] = None,
         account_ids: Optional[List[str]] = None,
         page_size: int = 500,
+        max_pages: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Finds groups of duplicate transactions using the Plaid-reported fields.
@@ -2967,6 +3065,9 @@ class MonarchMoney(object):
         :param end_date: Optional ISO date upper bound (inclusive).
         :param account_ids: Optional account-id filter.
         :param page_size: Pagination size when walking ``get_transactions``.
+        :param max_pages: Optional positive page limit. Defaults to scanning all
+            matching transactions; a limited scan only finds duplicates within
+            the fetched pages.
 
         :returns: A list of duplicate groups. Each group is a dict of the form::
 
@@ -2984,8 +3085,11 @@ class MonarchMoney(object):
             can simply retain ``transactions[0]`` and pass the rest to
             :meth:`delete_transaction`.
         """
+        if max_pages is not None and max_pages < 1:
+            raise ValueError("max_pages must be positive")
         all_txns: List[Dict[str, Any]] = []
         offset = 0
+        pages_fetched = 0
         while True:
             result = await self.get_transactions(
                 limit=page_size,
@@ -2994,12 +3098,15 @@ class MonarchMoney(object):
                 end_date=end_date,
                 account_ids=account_ids or [],
             )
+            pages_fetched += 1
             batch = result.get("allTransactions", {}).get("results", []) or []
             if not batch:
                 break
             all_txns.extend(batch)
             total = result.get("allTransactions", {}).get("totalCount") or 0
-            if len(all_txns) >= total:
+            if len(all_txns) >= total or (
+                max_pages is not None and pages_fetched >= max_pages
+            ):
                 break
             offset += page_size
 
@@ -3693,7 +3800,7 @@ class MonarchMoney(object):
         """
         Returns the current date as a string formatted like %Y-%m-%d.
         """
-        return datetime.now().strftime("%Y-%m-%d")
+        return _to_iso_date(datetime.now())
 
     def _get_start_of_current_month(self) -> str:
         """
@@ -3701,7 +3808,7 @@ class MonarchMoney(object):
         """
         now = datetime.now()
         start_of_month = now.replace(day=1)
-        return start_of_month.strftime("%Y-%m-%d")
+        return _to_iso_date(start_of_month)
 
     def _get_end_of_current_month(self) -> str:
         """
@@ -3710,7 +3817,150 @@ class MonarchMoney(object):
         now = datetime.now()
         _, last_day = calendar.monthrange(now.year, now.month)
         end_of_month = now.replace(day=last_day)
-        return end_of_month.strftime("%Y-%m-%d")
+        return _to_iso_date(end_of_month)
+
+    async def get_transaction_rules(self) -> Dict[str, Any]:
+        """
+        Gets all transaction rules configured in the account.
+        Rules are returned in their priority order.
+        """
+        query = gql(
+            """
+            query GetTransactionRules {
+                transactionRules {
+                    order
+                    ...TransactionRuleFields
+                }
+            }
+
+            fragment TransactionRuleFields on TransactionRuleV2 {
+                id
+                merchantCriteriaUseOriginalStatement
+                merchantCriteria {
+                    operator
+                    value
+                }
+                originalStatementCriteria {
+                    operator
+                    value
+                }
+                merchantNameCriteria {
+                    operator
+                    value
+                }
+                amountCriteria {
+                    operator
+                    isExpense
+                    value
+                    valueRange {
+                        lower
+                        upper
+                    }
+                }
+                categoryIds
+                accountIds
+                categories {
+                    id
+                    name
+                    icon
+                }
+                accounts {
+                    id
+                    displayName
+                    icon
+                    logoUrl
+                }
+                criteriaOwnerIsJoint
+                criteriaOwnerUserIds
+                criteriaOwnerUsers {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                criteriaBusinessEntityIds
+                criteriaBusinessEntityIsUnassigned
+                criteriaBusinessEntities {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
+                setMerchantAction {
+                    id
+                    name
+                }
+                setCategoryAction {
+                    id
+                    name
+                    icon
+                }
+                addTagsAction {
+                    id
+                    name
+                    color
+                }
+                linkGoalAction {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                }
+                linkSavingsGoalAction {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                }
+                needsReviewByUserAction {
+                    id
+                    name
+                    displayName
+                }
+                unassignNeedsReviewByUserAction
+                sendNotificationAction
+                setHideFromReportsAction
+                setLinkToPaydownBudgetAction
+                reviewStatusAction
+                actionSetOwnerIsJoint
+                actionSetOwner {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                actionSetBusinessEntity {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
+                actionSetBusinessEntityIsUnassigned
+                recentApplicationCount
+                lastAppliedAt
+                splitTransactionsAction {
+                    amountType
+                    splitsInfo {
+                        categoryId
+                        merchantName
+                        amount
+                        goalId
+                        savingsGoalId
+                        tags
+                        hideFromReports
+                        reviewStatus
+                        needsReviewByUserId
+                        ownerUserId
+                        ownerIsJoint
+                        businessEntityId
+                        businessEntityIsUnassigned
+                    }
+                }
+            }
+            """
+        )
+        return await self.gql_call(
+            operation="GetTransactionRules",
+            graphql_query=query,
+        )
 
     async def gql_call(
         self,
@@ -3810,7 +4060,7 @@ class MonarchMoney(object):
         if mfa_secret_key:
             data["totp"] = oathtool.generate_otp(mfa_secret_key)
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3887,7 +4137,7 @@ class MonarchMoney(object):
             "username": email,
         }
 
-        async with ClientSession(headers=self._headers) as session:
+        async with ClientSession(headers=self._headers, trust_env=True) as session:
             async with session.post(
                 MonarchMoneyEndpoints.getLoginEndpoint(), json=data
             ) as resp:
@@ -3961,6 +4211,7 @@ class MonarchMoney(object):
             cookies=cookies,
             timeout=self._timeout,
             ssl=True,
+            client_session_args={"trust_env": True},
         )
         return Client(
             transport=transport,
