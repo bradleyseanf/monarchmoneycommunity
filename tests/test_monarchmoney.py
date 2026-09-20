@@ -526,5 +526,59 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
         self.monarch_money.delete_session("temp_session.pickle")
 
 
+class TestDuplicateTransactions(unittest.IsolatedAsyncioTestCase):
+    async def test_page_limit_preserves_duplicates_and_default_full_scan(self):
+        transactions = [
+            {
+                "id": str(index),
+                "date": "2026-09-20",
+                "amount": -10,
+                "plaidName": "same reference",
+                "account": {"id": "123"},
+                "createdAt": str(index),
+            }
+            for index in range(4)
+        ]
+
+        async def page(**kwargs):
+            offset = kwargs["offset"]
+            return {
+                "allTransactions": {
+                    "results": transactions[offset : offset + kwargs["limit"]],
+                    "totalCount": len(transactions),
+                }
+            }
+
+        for options, expected_calls, expected_count in (
+            ({}, 2, 4),
+            ({"max_pages": 1}, 1, 2),
+            ({"max_pages": 2}, 2, 4),
+        ):
+            with self.subTest(options=options):
+                client = MonarchMoney()
+                client.get_transactions = AsyncMock(side_effect=page)
+                result = await client.find_duplicate_transactions(
+                    page_size=2, **options
+                )
+                self.assertEqual(client.get_transactions.await_count, expected_calls)
+                self.assertEqual(len(result), 1)
+                self.assertEqual(len(result[0]["transactions"]), expected_count)
+                self.assertEqual(
+                    [
+                        call.kwargs["offset"]
+                        for call in client.get_transactions.await_args_list
+                    ],
+                    list(range(0, expected_count, 2)),
+                )
+
+    async def test_nonpositive_page_limit_is_rejected_before_requests(self):
+        client = MonarchMoney()
+        client.get_transactions = AsyncMock()
+        for max_pages in (0, -1):
+            with self.assertRaisesRegex(ValueError, "max_pages must be positive"):
+                await client.find_duplicate_transactions(max_pages=max_pages)
+        client.get_transactions.assert_not_awaited()
+
+
 if __name__ == "__main__":
     unittest.main()

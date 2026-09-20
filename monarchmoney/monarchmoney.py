@@ -3036,6 +3036,7 @@ class MonarchMoney(object):
         end_date: Optional[str] = None,
         account_ids: Optional[List[str]] = None,
         page_size: int = 500,
+        max_pages: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Finds groups of duplicate transactions using the Plaid-reported fields.
@@ -3064,6 +3065,9 @@ class MonarchMoney(object):
         :param end_date: Optional ISO date upper bound (inclusive).
         :param account_ids: Optional account-id filter.
         :param page_size: Pagination size when walking ``get_transactions``.
+        :param max_pages: Optional positive page limit. Defaults to scanning all
+            matching transactions; a limited scan only finds duplicates within
+            the fetched pages.
 
         :returns: A list of duplicate groups. Each group is a dict of the form::
 
@@ -3081,8 +3085,11 @@ class MonarchMoney(object):
             can simply retain ``transactions[0]`` and pass the rest to
             :meth:`delete_transaction`.
         """
+        if max_pages is not None and max_pages < 1:
+            raise ValueError("max_pages must be positive")
         all_txns: List[Dict[str, Any]] = []
         offset = 0
+        pages_fetched = 0
         while True:
             result = await self.get_transactions(
                 limit=page_size,
@@ -3091,12 +3098,15 @@ class MonarchMoney(object):
                 end_date=end_date,
                 account_ids=account_ids or [],
             )
+            pages_fetched += 1
             batch = result.get("allTransactions", {}).get("results", []) or []
             if not batch:
                 break
             all_txns.extend(batch)
             total = result.get("allTransactions", {}).get("totalCount") or 0
-            if len(all_txns) >= total:
+            if len(all_txns) >= total or (
+                max_pages is not None and pages_fetched >= max_pages
+            ):
                 break
             offset += page_size
 
