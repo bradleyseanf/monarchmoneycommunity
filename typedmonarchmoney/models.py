@@ -2,6 +2,8 @@
 
 from .monarchmoney_typed import (
     MonarchAccount,
+    MonarchBudget,
+    MonarchBudgetMonth,
     MonarchCashflowSummary,
     MonarchHolding,
     MonarchHoldings,
@@ -10,6 +12,8 @@ from .monarchmoney_typed import (
 
 __all__ = [
     "MonarchAccount",
+    "MonarchBudget",
+    "MonarchBudgetMonth",
     "MonarchCashflowSummary",
     "MonarchHolding",
     "MonarchHoldings",

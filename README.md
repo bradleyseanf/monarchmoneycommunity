@@ -323,7 +323,7 @@ As of writing this README, the following methods are supported:
 
 ## Typed Client
 
-If you want typed account, subscription, and holdings models, import the typed client:
+If you want typed account, budget, subscription, and holdings models, import the typed client:
 
 ```python
 from typedmonarchmoney import TypedMonarchMoney
@@ -332,7 +332,7 @@ mm = TypedMonarchMoney()
 accounts = await mm.get_accounts()
 ```
 
-The typed client returns `MonarchAccount`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` objects instead of raw dictionaries.
+The typed client provides `MonarchAccount`, `MonarchBudget`, `MonarchBudgetMonth`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` models.
 
 # Contributing
 
