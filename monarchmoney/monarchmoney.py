@@ -3830,6 +3830,14 @@ class MonarchMoney(object):
                     operator
                     value
                 }
+                originalStatementCriteria {
+                    operator
+                    value
+                }
+                merchantNameCriteria {
+                    operator
+                    value
+                }
                 amountCriteria {
                     operator
                     isExpense
@@ -3852,6 +3860,21 @@ class MonarchMoney(object):
                     icon
                     logoUrl
                 }
+                criteriaOwnerIsJoint
+                criteriaOwnerUserIds
+                criteriaOwnerUsers {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                criteriaBusinessEntityIds
+                criteriaBusinessEntityIsUnassigned
+                criteriaBusinessEntities {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
                 setMerchantAction {
                     id
                     name
@@ -3872,14 +3895,35 @@ class MonarchMoney(object):
                     imageStorageProvider
                     imageStorageProviderId
                 }
+                linkSavingsGoalAction {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                }
                 needsReviewByUserAction {
                     id
                     name
+                    displayName
                 }
                 unassignNeedsReviewByUserAction
                 sendNotificationAction
                 setHideFromReportsAction
+                setLinkToPaydownBudgetAction
                 reviewStatusAction
+                actionSetOwnerIsJoint
+                actionSetOwner {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                actionSetBusinessEntity {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
+                actionSetBusinessEntityIsUnassigned
                 recentApplicationCount
                 lastAppliedAt
                 splitTransactionsAction {
@@ -3889,10 +3933,15 @@ class MonarchMoney(object):
                         merchantName
                         amount
                         goalId
+                        savingsGoalId
                         tags
                         hideFromReports
                         reviewStatus
                         needsReviewByUserId
+                        ownerUserId
+                        ownerIsJoint
+                        businessEntityId
+                        businessEntityIsUnassigned
                     }
                 }
             }

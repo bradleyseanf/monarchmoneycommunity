@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import json
 from gql import Client
+from graphql import print_ast
 from monarchmoney import MonarchMoney
 from monarchmoney.monarchmoney import LoginFailedException
 
@@ -23,6 +24,82 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             pickle.dump(session_data, fh)
         self.monarch_money = MonarchMoney()
         self.monarch_money.load_session("temp_session.pickle")
+
+    @patch.object(Client, "execute_async")
+    async def test_get_transaction_rules_includes_complete_rule_fields(
+        self, mock_execute_async
+    ):
+        """Transaction rules include every criterion and action used by the web UI."""
+        expected = {
+            "transactionRules": [
+                {
+                    "id": "rule-1",
+                    "originalStatementCriteria": [
+                        {"operator": "contains", "value": "core account"}
+                    ],
+                    "merchantNameCriteria": [{"operator": "eq", "value": "fees"}],
+                    "criteriaOwnerIsJoint": False,
+                    "criteriaOwnerUserIds": ["user-1"],
+                    "criteriaOwnerUsers": [{"id": "user-1", "displayName": "Owner"}],
+                    "criteriaBusinessEntityIds": ["business-1"],
+                    "criteriaBusinessEntityIsUnassigned": False,
+                    "criteriaBusinessEntities": [
+                        {"id": "business-1", "name": "Business"}
+                    ],
+                    "linkSavingsGoalAction": {"id": "goal-1", "name": "Reserve"},
+                    "setLinkToPaydownBudgetAction": True,
+                    "actionSetOwnerIsJoint": False,
+                    "actionSetOwner": {"id": "user-1", "displayName": "Owner"},
+                    "actionSetBusinessEntity": {
+                        "id": "business-1",
+                        "name": "Business",
+                    },
+                    "actionSetBusinessEntityIsUnassigned": False,
+                    "splitTransactionsAction": {
+                        "splitsInfo": [
+                            {
+                                "savingsGoalId": "goal-1",
+                                "ownerUserId": "user-1",
+                                "ownerIsJoint": False,
+                                "businessEntityId": "business-1",
+                                "businessEntityIsUnassigned": False,
+                            }
+                        ]
+                    },
+                }
+            ]
+        }
+        mock_execute_async.return_value = expected
+
+        result = await self.monarch_money.get_transaction_rules()
+
+        self.assertEqual(result, expected)
+        request = mock_execute_async.call_args.kwargs["request"]
+        query = print_ast(request.document)
+        required_fields = (
+            "originalStatementCriteria",
+            "merchantNameCriteria",
+            "criteriaOwnerIsJoint",
+            "criteriaOwnerUserIds",
+            "criteriaOwnerUsers",
+            "criteriaBusinessEntityIds",
+            "criteriaBusinessEntityIsUnassigned",
+            "criteriaBusinessEntities",
+            "linkSavingsGoalAction",
+            "setLinkToPaydownBudgetAction",
+            "actionSetOwnerIsJoint",
+            "actionSetOwner",
+            "actionSetBusinessEntity",
+            "actionSetBusinessEntityIsUnassigned",
+            "savingsGoalId",
+            "ownerUserId",
+            "ownerIsJoint",
+            "businessEntityId",
+            "businessEntityIsUnassigned",
+        )
+        for field in required_fields:
+            with self.subTest(field=field):
+                self.assertIn(field, query)
 
     @patch.object(Client, "execute_async")
     async def test_get_accounts(self, mock_execute_async):
