@@ -323,7 +323,7 @@ As of writing this README, the following methods are supported:
 
 ## Typed Client
 
-If you want typed account, subscription, and holdings models, import the typed client:
+If you want typed account, budget, subscription, and holdings models, import the typed client:
 
 ```python
 from typedmonarchmoney import TypedMonarchMoney
@@ -332,33 +332,7 @@ mm = TypedMonarchMoney()
 accounts = await mm.get_accounts()
 ```
 
-The typed client returns `MonarchAccount`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` objects instead of raw dictionaries.
-
-### Typed budgets
-
-`get_budgets_as_dict_with_id_key()` returns a dictionary of `MonarchBudget` objects keyed by category ID. Each budget includes `id`, `name`, `group_name`, and `monthly_amounts`, a dictionary of `MonarchBudgetMonth` objects keyed by month (`YYYY-MM-01`).
-
-Parameters:
-
-- `start_date` and `end_date`: Optional dates in `YYYY-MM-DD` format. Pass both dates to select a range, or omit both to use the existing `get_budgets()` default of last month through next month.
-- `use_legacy_goals`: Deprecated, unused flag, defaults to `False`.
-- `use_v2_goals`: Whether to request goal data, defaults to `True`. Goal data is not included in the typed category models.
-
-Using an authenticated `TypedMonarchMoney` client:
-
-```python
-budgets = await mm.get_budgets_as_dict_with_id_key(
-    start_date="2026-09-01", end_date="2026-09-30"
-)
-for budget in budgets.values():
-    month = budget.monthly_amounts.get("2026-09-01")
-    if month is not None:
-        print(budget.name, month.actual_amount, month.planned_amount, month.remaining_amount)
-```
-
-All returned months for categories in `categoryGroups` are retained. Amount records without matching category metadata are omitted. Categories without monthly records are still included, with an empty `monthly_amounts` dictionary. Missing or null amounts are `None`. The remaining amount comes directly from Monarch, including any rollover from previous months.
-
-`get_budgets()` continues to return the raw response dictionary. Both budget models can be imported from `typedmonarchmoney` or `typedmonarchmoney.models`.
+The typed client provides `MonarchAccount`, `MonarchBudget`, `MonarchBudgetMonth`, `MonarchSubscription`, `MonarchCashflowSummary`, and `MonarchHoldings` models.
 
 # Contributing
 
