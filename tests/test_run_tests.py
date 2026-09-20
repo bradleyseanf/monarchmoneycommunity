@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import inspect
 import io
@@ -11,6 +12,7 @@ from monarchmoney import CaptchaRequiredException, MonarchMoney, RequireMFAExcep
 from run_tests import (
     ArgumentResolver,
     LiveReadSuite,
+    ReadMethodDiscovery,
     SampleValues,
     SessionAuthenticator,
     TerminalReporter,
@@ -122,6 +124,63 @@ class TestLiveReadSuite(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(suite.reporter.failed, 1)
         self.assertEqual(suite.reporter.skipped, 0)
+
+    async def test_duplicate_probe_fetches_only_one_small_page(self):
+        for client_type in (MonarchMoney, TypedMonarchMoney):
+            with self.subTest(client=client_type.__name__):
+                suite = self.suite(client_type)
+                discovered = dict(ReadMethodDiscovery.discover(suite.client))
+                self.assertIn("find_duplicate_transactions", discovered)
+                transactions = [{"id": str(index)} for index in range(520)]
+
+                async def page(**kwargs):
+                    offset = kwargs["offset"]
+                    return {
+                        "allTransactions": {
+                            "results": transactions[offset : offset + kwargs["limit"]],
+                            "totalCount": len(transactions),
+                        }
+                    }
+
+                suite.client.get_transactions = AsyncMock(side_effect=page)
+                self.assertTrue(
+                    await suite._check(
+                        "find_duplicate_transactions",
+                        suite.client.find_duplicate_transactions,
+                    )
+                )
+                suite.client.get_transactions.assert_awaited_once_with(
+                    limit=10,
+                    offset=0,
+                    start_date=None,
+                    end_date=None,
+                    account_ids=[],
+                )
+                self.assertEqual(suite.reporter.passed, 1)
+                self.assertEqual(suite.reporter.skipped, 0)
+
+    async def test_slow_probe_reports_progress_times_out_and_allows_next_probe(self):
+        suite = self.suite(MonarchMoney)
+        suite.timeout = 0.01
+        cancelled = asyncio.Event()
+
+        async def get_slow():
+            self.assertIn("[RUN] MonarchMoney.get_slow", self.output.getvalue())
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        self.assertFalse(await suite._check("get_slow", get_slow))
+        self.assertTrue(cancelled.is_set())
+        self.assertIn("timed out after 0.01 seconds", self.output.getvalue())
+        self.assertEqual(suite.reporter.failed, 1)
+
+        async def get_next():
+            return {}
+
+        self.assertTrue(await suite._check("get_next", get_next))
+        self.assertEqual(suite.reporter.passed, 1)
 
     def test_empty_results_clear_samples_from_previous_client(self):
         samples = SampleValues(

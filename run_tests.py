@@ -149,6 +149,9 @@ class TerminalReporter:
         self.failed = 0
         self.skipped = 0
 
+    def start(self, label: str) -> None:
+        self._write("RUN", label, "checking…")
+
     def skip(self, label: str, detail: str) -> None:
         self.skipped += 1
         self._write("SKIP", label, detail)
@@ -199,9 +202,10 @@ class TerminalReporter:
                 "PASS": "\033[32m",
                 "FAIL": "\033[31m",
                 "SKIP": "\033[33m",
+                "RUN": "\033[36m",
             }[status]
             token = f"{color}{token}\033[0m"
-        print(f"{token} {label} - {detail}")
+        print(f"{token} {label} - {detail}", flush=True)
 
 
 @dataclass
@@ -363,14 +367,16 @@ class ArgumentResolver:
                 positional.append(value)
             else:
                 keyword[parameter.name] = value
+
         return positional, keyword
 
     def _value(self, parameter: inspect.Parameter) -> Any:
         name = parameter.name.lower()
         if name in {"limit", "page_size"}:
             return 10
+        if name == "max_pages":
+            return 1
         # Keep optional filters (including dates and booleans) at their defaults.
-        # Only pagination size is overridden to keep live responses small.
         if parameter.default is not inspect.Parameter.empty:
             return None
         if name in {"offset", "page"}:
@@ -540,6 +546,7 @@ class LiveReadSuite:
         samples: SampleValues,
     ) -> None:
         self.client = client_type(session_file=str(session_file), timeout=timeout)
+        self.timeout = timeout
         self.label = label
         self.session_file = session_file
         self.reporter = reporter
@@ -593,14 +600,22 @@ class LiveReadSuite:
             self.reporter.fail(label, error)
             return False
 
+        self.reporter.start(label)
         try:
-            result = await method(*positional, **keyword)
+            result = await asyncio.wait_for(
+                method(*positional, **keyword), timeout=self.timeout
+            )
             if result is None:
                 if self.label == "TypedMonarchMoney" and "holdings" in method_name:
                     self.reporter.pass_note(label, "no holdings")
                     return True
                 raise SmokeTestError("method returned null instead of JSON data")
             _json_ready(result)
+        except asyncio.TimeoutError:
+            self.reporter.fail_note(
+                label, f"read probe timed out after {self.timeout:g} seconds"
+            )
+            return False
         except Exception as error:  # noqa: BLE001
             self.reporter.fail(label, error)
             return False
@@ -713,7 +728,7 @@ def _parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         "--timeout",
         type=int,
         default=30,
-        help="request timeout in seconds (default: 30)",
+        help="timeout per live read probe and request in seconds (default: 30)",
     )
     colors = parser.add_mutually_exclusive_group()
     colors.add_argument(
