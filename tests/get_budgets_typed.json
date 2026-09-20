@@ -1,0 +1,50 @@
+{
+  "budgetData": {
+    "monthlyAmountsByCategory": [
+      {
+        "category": { "id": "food" },
+        "monthlyAmounts": [
+          {
+            "month": "2026-01-01",
+            "plannedCashFlowAmount": "100.0",
+            "actualAmount": "-40.0",
+            "remainingAmount": "125.0"
+          },
+          {
+            "month": "2026-02-01",
+            "plannedCashFlowAmount": null,
+            "actualAmount": 0.0,
+            "remainingAmount": "-12.5"
+          },
+          { "month": "2026-03-01" }
+        ]
+      },
+      {
+        "category": { "id": "dangling" },
+        "monthlyAmounts": [
+          {
+            "month": "2026-01-01",
+            "plannedCashFlowAmount": 1.0,
+            "actualAmount": 1.0,
+            "remainingAmount": 0.0
+          }
+        ]
+      }
+    ]
+  },
+  "categoryGroups": [
+    {
+      "id": "expenses",
+      "name": "Food & Dining",
+      "categories": [
+        { "id": "food", "name": "Groceries" },
+        { "id": "empty", "name": "Restaurants" }
+      ]
+    },
+    {
+      "id": "income",
+      "name": "Income",
+      "categories": [{ "id": "paycheck", "name": "Paychecks" }]
+    }
+  ]
+}
