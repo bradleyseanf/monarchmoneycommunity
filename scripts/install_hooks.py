@@ -13,6 +13,7 @@ exec "$repo_root/.githooks/pre-push" "$@"
 
 
 def install_hook(root: Path) -> None:
+    root = root.resolve()
     hook_path = subprocess.check_output(
         ["git", "rev-parse", "--git-path", "hooks/pre-push"],
         cwd=root,
@@ -23,6 +24,32 @@ def install_hook(root: Path) -> None:
     if hook.resolve() == source.resolve():
         print("The versioned pre-push hook is already active.")
         return
+    common_dir = (
+        root
+        / subprocess.check_output(
+            ["git", "rev-parse", "--git-common-dir"], cwd=root, text=True
+        ).strip()
+    )
+    resolved_hook = hook.resolve()
+    if not any(
+        directory in resolved_hook.parents for directory in (root, common_dir.resolve())
+    ):
+        raise SystemExit(
+            f"Shared or external hook directory preserved: {hook.parent}. "
+            "Integrate this repository's .githooks/pre-push with your existing "
+            "hook setup manually; no hooks or Git configuration were changed."
+        )
+    if (
+        common_dir.resolve() not in resolved_hook.parents
+        and subprocess.run(
+            ["git", "check-ignore", "-q", str(hook)], cwd=root
+        ).returncode
+    ):
+        raise SystemExit(
+            f"Custom hook must be ignored before installation: {hook}. "
+            "Add its repository-relative path to .git/info/exclude and retry, "
+            "so the generated hook does not dirty your checkout."
+        )
     hook.parent.mkdir(parents=True, exist_ok=True)
     if hook.exists() or hook.is_symlink():
         if not hook.is_symlink() and hook.read_text() == WRAPPER:

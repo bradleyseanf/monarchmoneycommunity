@@ -448,18 +448,38 @@ class SessionAuthenticator:
     async def authenticate(self, client: MonarchMoney, allow_interactive: bool) -> str:
         saved_error: Optional[BaseException] = None
         if self.session_file.is_file():
+            auth_state = (
+                client._token,
+                client._cookies,
+                client._auth_mode,
+                client._headers.copy(),
+            )
             try:
                 with contextlib.redirect_stderr(io.StringIO()):
                     await client.login(use_saved_session=True, save_session=True)
+                # login() only loads the file; an authenticated read proves that
+                # the saved token/cookies are still accepted by Monarch.
+                await asyncio.wait_for(client.get_accounts(), timeout=client.timeout)
                 return f"saved session {self.session_file}"
             except Exception as error:  # noqa: BLE001
                 saved_error = error
+                # A rejected cookie session must not leave the client in cookie
+                # mode when falling back to password/token authentication.
+                (
+                    client._token,
+                    client._cookies,
+                    client._auth_mode,
+                    client._headers,
+                ) = auth_state
 
         if not allow_interactive:
             detail = "saved session unavailable for typed client"
             if saved_error is not None:
                 detail += f": {saved_error}"
             raise SmokeTestError(detail)
+
+        if saved_error is not None:
+            print("Saved session is unavailable; logging in again.")
 
         cookie_string = os.getenv("MONARCH_COOKIE_STRING", "").strip()
         if cookie_string:

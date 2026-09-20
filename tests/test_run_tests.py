@@ -15,6 +15,7 @@ from run_tests import (
     ReadMethodDiscovery,
     SampleValues,
     SessionAuthenticator,
+    SmokeTestError,
     TerminalReporter,
 )
 from typedmonarchmoney import TypedMonarchMoney
@@ -215,9 +216,75 @@ class TestSessionAuthenticator(unittest.IsolatedAsyncioTestCase):
             self.client.get_accounts.assert_awaited_once()
             self.assertTrue(self.session_file.is_file())
             typed = TypedMonarchMoney(session_file=str(self.session_file))
+            typed.get_accounts = AsyncMock(return_value=[])
             await self.authenticator.authenticate(typed, False)
+            typed.get_accounts.assert_awaited_once()
         self.assertEqual(typed._auth_mode, "cookie")
         self.assertEqual(typed._cookies, self.client._cookies)
+
+    async def test_expired_saved_token_falls_back_to_fresh_cookies(self):
+        stale = MonarchMoney(session_file=str(self.session_file), token="expired-token")
+        stale.save_session()
+        os.environ["MONARCH_COOKIE_STRING"] = "session_id=fresh; csrftoken=fresh-csrf"
+        self.client.get_accounts = AsyncMock(
+            side_effect=[RuntimeError("expired session"), {"accounts": []}]
+        )
+        with patch("builtins.input", side_effect=AssertionError("unexpected prompt")):
+            description = await self.authenticator.authenticate(self.client, True)
+        self.assertIn("cookie session saved", description)
+        self.assertEqual(self.client.get_accounts.await_count, 2)
+        restored = MonarchMoney(session_file=str(self.session_file))
+        restored.load_session()
+        self.assertEqual(restored._auth_mode, "cookie")
+        self.assertEqual(restored._cookies["session_id"], "fresh")
+        self.assertIsNone(restored.token)
+
+    async def test_expired_cookie_session_does_not_contaminate_password_login(self):
+        stale = MonarchMoney(session_file=str(self.session_file))
+        stale.set_cookies({"session_id": "expired", "csrftoken": "expired-csrf"})
+        stale.save_session()
+        os.environ.update(MONARCH_EMAIL="test@example.com", MONARCH_PASSWORD="password")
+        initial_headers = self.client._headers.copy()
+        self.client.get_accounts = AsyncMock(
+            side_effect=RuntimeError("expired session")
+        )
+
+        async def login_user(email, password, mfa_secret_key):
+            self.assertEqual(self.client._auth_mode, "token")
+            self.assertIsNone(self.client._cookies)
+            self.assertEqual(self.client._headers, initial_headers)
+            self.client.set_token("fresh-token")
+            self.client._headers["Authorization"] = "Token fresh-token"
+
+        with patch.object(self.client, "_login_user", side_effect=login_user) as login:
+            description = await self.authenticator.authenticate(self.client, True)
+        login.assert_awaited_once_with("test@example.com", "password", None)
+        self.assertIn("new session saved", description)
+        restored = MonarchMoney(session_file=str(self.session_file))
+        restored.load_session()
+        self.assertEqual(restored.token, "fresh-token")
+        self.assertEqual(restored._auth_mode, "token")
+        self.assertIsNone(restored._cookies)
+
+    async def test_valid_saved_token_is_verified_and_reused_without_prompting(self):
+        stale = MonarchMoney(session_file=str(self.session_file), token="valid-token")
+        stale.save_session()
+        self.client.get_accounts = AsyncMock(return_value={"accounts": []})
+        with patch("builtins.input", side_effect=AssertionError("unexpected prompt")):
+            description = await self.authenticator.authenticate(self.client, True)
+        self.client.get_accounts.assert_awaited_once()
+        self.assertIn("saved session", description)
+        self.assertEqual(self.client.token, "valid-token")
+
+    async def test_typed_client_rejects_expired_session_without_prompting(self):
+        stale = MonarchMoney(session_file=str(self.session_file), token="expired-token")
+        stale.save_session()
+        typed = TypedMonarchMoney(session_file=str(self.session_file))
+        typed.get_accounts = AsyncMock(side_effect=RuntimeError("expired session"))
+        with patch("builtins.input", side_effect=AssertionError("unexpected prompt")):
+            with self.assertRaisesRegex(SmokeTestError, "saved session unavailable"):
+                await self.authenticator.authenticate(typed, False)
+        self.assertIsNone(typed.token)
 
     async def test_invalid_cookie_session_is_not_saved(self):
         os.environ["MONARCH_COOKIE_STRING"] = (
