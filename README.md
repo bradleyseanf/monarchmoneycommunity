@@ -260,6 +260,10 @@ As of writing this README, the following methods are supported:
       <td>modifies one or more attributes for an existing transaction</td>
     </tr>
     <tr>
+      <td><code>delete_merchant</code></td>
+      <td>deletes a merchant by id. Pass <code>move_to_merchant_id</code> to merge it into another merchant first (Monarch's "Merge &amp; delete"), e.g. <code>await mm.delete_merchant("170000000000000001", move_to_merchant_id="170000000000000002")</code></td>
+    </tr>
+    <tr>
       <td><code>update_reoccuring</code></td>
       <td>updates recurring merchant settings (frequency, amount, date, active status)</td>
     </tr>
