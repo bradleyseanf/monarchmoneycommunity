@@ -1,12 +1,15 @@
 import os
 import pickle
+import stat
+import tempfile
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import json
+from aiohttp import FormData
 from gql import Client
 from graphql import print_ast
-from monarchmoney import MonarchMoney
+from monarchmoney import MonarchMoney, MonarchMoneyEndpoints
 from monarchmoney.monarchmoney import LoginFailedException, RequestFailedException
 
 
@@ -963,6 +966,122 @@ class TestDuplicateTransactions(unittest.IsolatedAsyncioTestCase):
         client.get_transaction_rules = AsyncMock(return_value={"transactionRules": []})
         with self.assertRaises(RequestFailedException):
             await client.update_transaction_rule("nope", set_category_id="cat-new")
+
+
+_EXPLOIT_CALLS = []
+
+
+def _record_exploit():
+    _EXPLOIT_CALLS.append(True)
+    return "attacker-token"
+
+
+class _PickleExploit:
+    def __reduce__(self):
+        return (_record_exploit, ())
+
+
+class TestSessionSecurity(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.session_file = os.path.join(self.tmp.name, "mm", "mm_session.pickle")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_save_session_writes_private_json(self):
+        client = MonarchMoney(session_file=self.session_file, token="long-lived")
+        client.save_session()
+
+        with open(self.session_file, "r", encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["token"], "long-lived")
+        if os.name == "posix":
+            self.assertEqual(stat.S_IMODE(os.stat(self.session_file).st_mode), 0o600)
+            self.assertEqual(
+                stat.S_IMODE(os.stat(os.path.dirname(self.session_file)).st_mode),
+                0o700,
+            )
+
+    @unittest.skipUnless(os.name == "posix", "POSIX permissions only")
+    def test_save_session_tightens_existing_file_permissions(self):
+        os.makedirs(os.path.dirname(self.session_file))
+        with open(self.session_file, "w") as fh:
+            fh.write("{}")
+        os.chmod(self.session_file, 0o644)
+
+        MonarchMoney(session_file=self.session_file, token="t").save_session()
+
+        self.assertEqual(stat.S_IMODE(os.stat(self.session_file).st_mode), 0o600)
+
+    def test_load_session_reads_legacy_pickle(self):
+        os.makedirs(os.path.dirname(self.session_file))
+        with open(self.session_file, "wb") as fh:
+            pickle.dump({"token": "legacy-token", "auth_mode": "token"}, fh)
+
+        client = MonarchMoney(session_file=self.session_file)
+        client.load_session()
+
+        self.assertEqual(client.token, "legacy-token")
+
+    def test_load_session_refuses_pickle_with_objects(self):
+        os.makedirs(os.path.dirname(self.session_file))
+        with open(self.session_file, "wb") as fh:
+            pickle.dump({"token": _PickleExploit()}, fh)
+
+        _EXPLOIT_CALLS.clear()
+        client = MonarchMoney(session_file=self.session_file)
+        with self.assertRaises(LoginFailedException):
+            client.load_session()
+        self.assertEqual(_EXPLOIT_CALLS, [])
+
+
+class TestUploadCredentialScoping(unittest.IsolatedAsyncioTestCase):
+    def _mock_session(self, mock_client_session):
+        response = MagicMock()
+        response.status = 200
+        response.json = AsyncMock(return_value={})
+        session = MagicMock()
+        session.post = AsyncMock(return_value=response)
+        context = MagicMock()
+        context.__aenter__.return_value = session
+        mock_client_session.return_value = context
+
+    @patch("monarchmoney.monarchmoney.ClientSession")
+    async def test_third_party_upload_omits_monarch_token(self, mock_client_session):
+        self._mock_session(mock_client_session)
+        client = MonarchMoney(token="secret-token")
+
+        await client._upload_form_data(
+            MonarchMoneyEndpoints.getAttachmentUploadEndpoint(), FormData()
+        )
+
+        headers = mock_client_session.call_args.kwargs["headers"]
+        self.assertNotIn("Authorization", headers)
+        self.assertIsNone(mock_client_session.call_args.kwargs["cookies"])
+
+    @patch("monarchmoney.monarchmoney.ClientSession")
+    async def test_monarch_upload_keeps_token(self, mock_client_session):
+        self._mock_session(mock_client_session)
+        client = MonarchMoney(token="secret-token")
+
+        await client._upload_form_data(
+            MonarchMoneyEndpoints.getAccountBalanceHistoryUploadEndpoint(), FormData()
+        )
+
+        headers = mock_client_session.call_args.kwargs["headers"]
+        self.assertEqual(headers["Authorization"], "Token secret-token")
+
+    @patch("monarchmoney.monarchmoney.ClientSession")
+    async def test_lookalike_host_is_not_trusted(self, mock_client_session):
+        self._mock_session(mock_client_session)
+        client = MonarchMoney(token="secret-token")
+
+        await client._upload_form_data(
+            "https://evil.example/upload?next=api.monarch.com", FormData()
+        )
+
+        headers = mock_client_session.call_args.kwargs["headers"]
+        self.assertNotIn("Authorization", headers)
 
 
 if __name__ == "__main__":
