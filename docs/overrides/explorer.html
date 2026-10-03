@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Monarch Money Community method reference with parameters, request examples, responses, and data schemas.">
+    <title>Monarch Money API</title>
+    <link rel="icon" href="{{ 'assets/images/favicon.png' | url }}">
+    <link rel="stylesheet" href="{{ 'stylesheets/explorer.css' | url }}">
+    <script defer src="{{ 'javascripts/explorer.js' | url }}"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#methods">Skip to methods</a>
+    <header class="topbar">
+      <div class="page-width topbar-inner">
+        <a class="brand" href="{{ '.' | url }}">Monarch Money <span>Community</span></a>
+        <nav aria-label="Documentation">
+          <a href="{{ 'getting-started/' | url }}">Setup</a>
+          <a href="{{ 'reference/client/' | url }}">Python reference</a>
+          <a href="{{ config.repo_url }}">GitHub <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+    <main class="page-width" id="explorer" data-catalog="{{ 'assets/api-catalog.json' | url }}" data-repo="{{ config.repo_url }}">
+      <div class="intro">
+        <h1>API reference</h1>
+        <p>Expand a method to see parameters, requests, responses, and schemas.</p>
+      </div>
+      <form class="filters" role="search" onsubmit="return false">
+        <div class="filter-search">
+          <label for="method-search">Filter methods</label>
+          <input id="method-search" type="search" placeholder="Search by name or field…" autocomplete="off" spellcheck="false">
+        </div>
+        <div>
+          <label for="client-filter">Client</label>
+          <select id="client-filter">
+            <option value="MonarchMoney">MonarchMoney</option>
+            <option value="TypedMonarchMoney">TypedMonarchMoney</option>
+          </select>
+        </div>
+        <div>
+          <label for="group-filter">Group</label>
+          <select id="group-filter"><option value="">All methods</option></select>
+        </div>
+      </form>
+      <div class="list-meta">
+        <span id="method-count" role="status" aria-live="polite">Loading methods…</span>
+        <button type="button" id="collapse-all">Collapse all</button>
+      </div>
+      <p id="typed-note" class="note" hidden>Other methods are inherited from MonarchMoney. Choose the base client to view them.</p>
+      <div id="methods" tabindex="-1"></div>
+      <noscript><p>Enable JavaScript to use the explorer, or open the <a href="{{ 'reference/client/' | url }}">Python reference</a>.</p></noscript>
+      <footer>
+        <span>Generated from the Python source. Examples use sample data.</span>
+        <a href="{{ 'assets/api-catalog.json' | url }}" download>Download catalog</a>
+      </footer>
+    </main>
+  </body>
+</html>

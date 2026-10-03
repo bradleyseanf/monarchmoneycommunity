@@ -514,7 +514,7 @@ class MonarchMoney(object):
         :param account_sub_type: The string sub type of the account (i.e. auto, commercial, mortgage, line_of_credit, etc)
         :param is_in_net_worth: A boolean if the account should be considered in the net worth calculation
         :param account_name: The string of the account name
-        :param display_balance: a float of the amount of the account balance when the account is created
+        :param account_balance: a float of the amount of the account balance when the account is created
         """
         query = gql(
             """
@@ -2486,7 +2486,7 @@ class MonarchMoney(object):
         end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Gets all the categories configured in the account.
+        Gets cashflow grouped by category, category group, and merchant, plus a summary.
         """
         query = gql(
             """
@@ -2591,7 +2591,7 @@ class MonarchMoney(object):
         end_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Gets all the categories configured in the account.
+        Gets total income, expenses, savings, and savings rate for the date range.
         """
         query = gql(
             """

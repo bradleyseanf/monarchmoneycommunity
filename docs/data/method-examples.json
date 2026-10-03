@@ -1,0 +1,478 @@
+{
+  "MonarchMoney.get_transactions": {
+    "python_example": "result = await mm.get_transactions(\n    limit=10,\n    start_date=\"2026-01-01\",\n    end_date=\"2026-01-31\",\n)\ntransactions = result[\"allTransactions\"][\"results\"]",
+    "response_example": {
+      "allTransactions": {
+        "totalCount": 1,
+        "results": [
+          {
+            "id": "example-transaction-id",
+            "amount": -42.5,
+            "pending": false,
+            "date": "2026-01-15",
+            "notes": "Weekly groceries",
+            "category": {
+              "id": "example-category-id",
+              "name": "Groceries"
+            },
+            "merchant": {
+              "id": "example-merchant-id",
+              "name": "Example Market"
+            },
+            "account": {
+              "id": "example-account-id",
+              "displayName": "Example Checking"
+            },
+            "tags": []
+          }
+        ]
+      },
+      "transactionRules": []
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "GetTransactionsList",
+      "variables": {
+        "offset": 0,
+        "limit": 10,
+        "orderBy": "date",
+        "filters": {
+          "search": "",
+          "categories": [],
+          "accounts": [],
+          "tags": [],
+          "startDate": "2026-01-01",
+          "endDate": "2026-01-31"
+        }
+      }
+    }
+  },
+  "MonarchMoney.get_savings_goals": {
+    "python_example": "result = await mm.get_savings_goals()\ngoals = result[\"savingsGoals\"]",
+    "response_example": {
+      "savingsGoals": [
+        {
+          "id": "example-goal-id",
+          "name": "Example Emergency Fund",
+          "archivedAt": null,
+          "currentBalance": 1200.0,
+          "targetAmount": 5000.0,
+          "targetDate": "2026-12-31",
+          "plannedMonthlyContribution": 200.0,
+          "allocationAmountsByAccount": [
+            {
+              "goalId": "example-goal-id",
+              "totalAmount": 1200.0,
+              "account": {
+                "id": "example-savings-account-id",
+                "displayName": "Example Savings",
+                "displayBalance": 2000.0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Common_SavingsGoals",
+      "variables": {}
+    }
+  },
+  "MonarchMoney.get_savings_goal": {
+    "python_example": "result = await mm.get_savings_goal(goal_id=\"example-goal-id\")\ngoal = result[\"savingsGoal\"]",
+    "response_example": {
+      "savingsGoal": {
+        "id": "example-goal-id",
+        "name": "Example Emergency Fund",
+        "archivedAt": null,
+        "currentBalance": 1200.0,
+        "targetAmount": 5000.0,
+        "targetDate": "2026-12-31",
+        "plannedMonthlyContribution": 200.0,
+        "allocationAmountsByAccount": [
+          {
+            "goalId": "example-goal-id",
+            "totalAmount": 1200.0,
+            "account": {
+              "id": "example-savings-account-id",
+              "displayName": "Example Savings",
+              "displayBalance": 2000.0
+            }
+          }
+        ]
+      }
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Common_SavingsGoal",
+      "variables": {
+        "id": "example-goal-id"
+      }
+    }
+  },
+  "MonarchMoney.get_savings_goal_events": {
+    "python_example": "result = await mm.get_savings_goal_events(\n    goal_id=\"example-goal-id\",\n    limit=20,\n    offset=0,\n)\npage = result[\"savingsGoal\"][\"goalEventsPaginated\"]\nevents = page[\"events\"]",
+    "response_example": {
+      "savingsGoal": {
+        "id": "example-goal-id",
+        "name": "Example Emergency Fund",
+        "goalEventsPaginated": {
+          "events": [
+            {
+              "id": "example-event-id",
+              "date": "2026-01-15",
+              "amount": 200.0,
+              "notes": "January contribution",
+              "account": {
+                "id": "example-savings-account-id",
+                "displayName": "Example Savings"
+              }
+            }
+          ],
+          "totalEventCount": 1,
+          "hasMoreEvents": false,
+          "nextOffset": 1
+        }
+      }
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema. Continue with nextOffset only while hasMoreEvents is true.",
+    "request_body": {
+      "operationName": "Common_SavingsGoalEventsPaginated",
+      "variables": {
+        "id": "example-goal-id",
+        "limit": 20,
+        "offset": 0
+      }
+    }
+  },
+  "MonarchMoney.get_goal_accounts_allocation_summary": {
+    "python_example": "result = await mm.get_goal_accounts_allocation_summary()\naccounts = result[\"goalAccountsAllocationSummary\"]",
+    "response_example": {
+      "goalAccountsAllocationSummary": [
+        {
+          "account": {
+            "id": "example-savings-account-id",
+            "displayName": "Example Savings"
+          },
+          "totalBalance": 2000.0,
+          "availableBalance": 800.0,
+          "balancesByGoal": [
+            {
+              "accountId": "example-savings-account-id",
+              "goal": {
+                "id": "example-goal-id",
+                "name": "Example Emergency Fund",
+                "currentBalance": 1200.0
+              },
+              "amount": 1200.0
+            }
+          ]
+        }
+      ]
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Common_SavingsGoalAccountsAllocationSummary",
+      "variables": {}
+    }
+  },
+  "MonarchMoney.get_cashflow": {
+    "python_example": "result = await mm.get_cashflow(\n    start_date=\"2026-01-01\",\n    end_date=\"2026-01-31\",\n)\nby_category = result[\"byCategory\"]",
+    "response_example": {
+      "byCategory": [
+        {
+          "groupBy": {
+            "category": {
+              "id": "example-category-id",
+              "name": "Groceries",
+              "group": {
+                "id": "example-category-group-id",
+                "type": "expense"
+              }
+            }
+          },
+          "summary": {
+            "sum": -1500.0
+          }
+        }
+      ],
+      "byCategoryGroup": [
+        {
+          "groupBy": {
+            "categoryGroup": {
+              "id": "example-category-group-id",
+              "name": "Food",
+              "type": "expense"
+            }
+          },
+          "summary": {
+            "sum": -1500.0
+          }
+        }
+      ],
+      "byMerchant": [
+        {
+          "groupBy": {
+            "merchant": {
+              "id": "example-merchant-id",
+              "name": "Example Market"
+            }
+          },
+          "summary": {
+            "sumIncome": 0.0,
+            "sumExpense": -1500.0
+          }
+        }
+      ],
+      "summary": [
+        {
+          "summary": {
+            "sumIncome": 3000.0,
+            "sumExpense": -1500.0,
+            "savings": 1500.0,
+            "savingsRate": 0.5
+          }
+        }
+      ]
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Web_GetCashFlowPage",
+      "variables": {
+        "limit": 100,
+        "orderBy": "date",
+        "filters": {
+          "search": "",
+          "categories": [],
+          "accounts": [],
+          "tags": [],
+          "startDate": "2026-01-01",
+          "endDate": "2026-01-31"
+        }
+      }
+    }
+  },
+  "MonarchMoney.get_cashflow_summary": {
+    "python_example": "result = await mm.get_cashflow_summary(\n    start_date=\"2026-01-01\",\n    end_date=\"2026-01-31\",\n)\nsummary = result[\"summary\"][0][\"summary\"]",
+    "response_example": {
+      "summary": [
+        {
+          "summary": {
+            "sumIncome": 3000.0,
+            "sumExpense": -1500.0,
+            "savings": 1500.0,
+            "savingsRate": 0.5
+          }
+        }
+      ]
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Web_GetCashFlowPage",
+      "variables": {
+        "limit": 100,
+        "orderBy": "date",
+        "filters": {
+          "search": "",
+          "categories": [],
+          "accounts": [],
+          "tags": [],
+          "startDate": "2026-01-01",
+          "endDate": "2026-01-31"
+        }
+      }
+    }
+  },
+  "MonarchMoney.get_budgets": {
+    "python_example": "result = await mm.get_budgets(\n    start_date=\"2026-01-01\",\n    end_date=\"2026-01-31\",\n)\ncategories = result[\"budgetData\"][\"monthlyAmountsByCategory\"]",
+    "response_example": {
+      "budgetData": {
+        "monthlyAmountsByCategory": [
+          {
+            "category": {
+              "id": "example-category-id"
+            },
+            "monthlyAmounts": [
+              {
+                "month": "2026-01-01",
+                "plannedCashFlowAmount": 400.0,
+                "plannedSetAsideAmount": 0.0,
+                "actualAmount": 150.0,
+                "remainingAmount": 250.0
+              }
+            ]
+          }
+        ],
+        "monthlyAmountsByCategoryGroup": [],
+        "totalsByMonth": [
+          {
+            "month": "2026-01-01",
+            "totalIncome": {
+              "plannedAmount": 3000.0,
+              "actualAmount": 3000.0,
+              "remainingAmount": 0.0
+            },
+            "totalExpenses": {
+              "plannedAmount": 400.0,
+              "actualAmount": 150.0,
+              "remainingAmount": 250.0
+            }
+          }
+        ]
+      },
+      "categoryGroups": [
+        {
+          "id": "example-category-group-id",
+          "name": "Food",
+          "type": "expense",
+          "categories": [
+            {
+              "id": "example-category-id",
+              "name": "Groceries"
+            }
+          ]
+        }
+      ],
+      "goalsV2": [],
+      "budgetSystem": "groups_and_categories"
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "GetJointPlanningData",
+      "variables": {
+        "startDate": "2026-01-01",
+        "endDate": "2026-01-31",
+        "useV2Goals": true
+      }
+    }
+  },
+  "MonarchMoney.get_recurring_transactions": {
+    "python_example": "result = await mm.get_recurring_transactions(\n    start_date=\"2026-01-01\",\n    end_date=\"2026-01-31\",\n)\nitems = result[\"recurringTransactionItems\"]",
+    "response_example": {
+      "recurringTransactionItems": [
+        {
+          "stream": {
+            "id": "example-recurring-stream-id",
+            "amount": -15.0,
+            "isApproximate": false,
+            "merchant": {
+              "id": "example-merchant-id",
+              "name": "Example Streaming Service"
+            }
+          },
+          "date": "2026-01-20",
+          "isPast": false,
+          "transactionId": null,
+          "amount": -15.0,
+          "category": {
+            "id": "example-category-id",
+            "name": "Entertainment"
+          },
+          "account": {
+            "id": "example-account-id",
+            "displayName": "Example Checking"
+          }
+        }
+      ]
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Web_GetUpcomingRecurringTransactionItems",
+      "variables": {
+        "startDate": "2026-01-01",
+        "endDate": "2026-01-31"
+      }
+    }
+  },
+  "MonarchMoney.create_transaction": {
+    "python_example": "result = await mm.create_transaction(\n    date=\"2026-01-15\",\n    account_id=\"example-account-id\",\n    amount=-42.50,\n    merchant_name=\"Example Market\",\n    category_id=\"example-category-id\",\n    notes=\"Weekly groceries\",\n)",
+    "response_example": {
+      "createTransaction": {
+        "errors": [],
+        "transaction": {
+          "id": "example-transaction-id"
+        }
+      }
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Common_CreateTransactionMutation",
+      "variables": {
+        "input": {
+          "date": "2026-01-15",
+          "accountId": "example-account-id",
+          "amount": -42.5,
+          "merchantName": "Example Market",
+          "categoryId": "example-category-id",
+          "notes": "Weekly groceries",
+          "shouldUpdateBalance": false
+        }
+      }
+    }
+  },
+  "MonarchMoney.update_transaction": {
+    "python_example": "result = await mm.update_transaction(\n    transaction_id=\"example-transaction-id\",\n    notes=\"Updated grocery note\",\n)",
+    "response_example": {
+      "updateTransaction": {
+        "transaction": {
+          "id": "example-transaction-id",
+          "amount": -42.5,
+          "date": "2026-01-15",
+          "notes": "Updated grocery note"
+        },
+        "errors": []
+      }
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Web_TransactionDrawerUpdateTransaction",
+      "variables": {
+        "input": {
+          "id": "example-transaction-id",
+          "category": null,
+          "name": null,
+          "notes": "Updated grocery note"
+        }
+      }
+    }
+  },
+  "MonarchMoney.set_budget_amount": {
+    "python_example": "result = await mm.set_budget_amount(\n    amount=400.0,\n    category_id=\"example-category-id\",\n    start_date=\"2026-01-01\",\n)",
+    "response_example": {
+      "updateOrCreateBudgetItem": {
+        "budgetItem": {
+          "id": "example-budget-item-id",
+          "budgetAmount": 400.0
+        }
+      }
+    },
+    "response_note": "Synthetic, partial Python return value. Fields may be omitted; this is not the complete schema.",
+    "request_body": {
+      "operationName": "Common_UpdateBudgetItem",
+      "variables": {
+        "input": {
+          "startDate": "2026-01-01",
+          "timeframe": "month",
+          "categoryId": "example-category-id",
+          "categoryGroupId": null,
+          "amount": 400.0,
+          "applyToFuture": false
+        }
+      }
+    }
+  },
+  "MonarchMoney.delete_transaction": {
+    "python_example": "deleted = await mm.delete_transaction(\n    transaction_id=\"example-transaction-id\",\n)",
+    "response_example": true,
+    "response_note": "Synthetic success example. The Python method returns True; it raises RequestFailedException if deletion fails.",
+    "request_body": {
+      "operationName": "Common_DeleteTransactionMutation",
+      "variables": {
+        "input": {
+          "transactionId": "example-transaction-id"
+        }
+      }
+    }
+  }
+}

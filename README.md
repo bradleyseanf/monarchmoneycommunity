@@ -16,6 +16,17 @@
 
 Python library for accessing [Monarch Money](https://www.monarchmoney.com) data.
 
+## API documentation
+
+[Read the API docs](https://bradleyseanf.github.io/monarchmoneycommunity/) for a
+method explorer with parameters, request and response examples, and data schemas,
+plus authentication guides and typed models. Signatures and method descriptions are generated from the Python
+source. The site deploys automatically to GitHub Pages when changes reach `main`.
+
+To preview the docs locally, install `requirements-docs.txt` in a virtual
+environment and run `python -m mkdocs serve`. See
+[documentation development and deployment](docs/contributing.md) for setup.
+
 # Installation
 
 ## From Source Code
@@ -30,7 +41,7 @@ Clone this repository from Git
 
 Import the library as `monarchmoney` after installation.
 
-This package pins `gql` to `4.0`.
+See [requirements.txt](requirements.txt) for the pinned `gql` version.
 
 # Instantiate & Login
 
@@ -94,7 +105,7 @@ You can easily save your session for use later on.  While we don't know precisel
 from monarchmoney import MonarchMoney, RequireMFAException
 
 mm = MonarchMoney()
-mm.interactive_login()
+await mm.interactive_login()
 
 # Save it for later, no more need to login!
 mm.save_session()
@@ -383,19 +394,14 @@ If you plan to submit up a pull request, you can expect a timely review.  There 
 
 ## Opening a pull request
 
-This library requires a pre-push check requiring that you log into your Monarch account and test all NON-MUTATING methods return valid JSON data including those of new types. If any fail, the push fails.
+Run the unit tests before opening a pull request:
 
 ```sh
-# One-time setup
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-make install-hooks
+python -m unittest discover -s tests -q
 ```
 
-```sh
-# Automatically runs run_tests.py before pushing
-git push
-```
+For an optional live check of non-mutating methods, run `python run_tests.py`.
+This requires logging into your Monarch account.
 
 # FAQ
 

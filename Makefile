@@ -6,8 +6,12 @@ builddist:
 install:
 	pip install .
 
-install-hooks:
-	python3 scripts/install_hooks.py
+.PHONY: docs docs-build
+docs:
+	python -m mkdocs serve
+
+docs-build:
+	python -m mkdocs build --strict
 
 twine:
 	twine upload dist/monarchmoney*

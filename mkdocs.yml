@@ -1,0 +1,114 @@
+site_name: Monarch Money Community
+site_description: Python API reference, authentication guides, and practical examples for Monarch Money Community.
+site_url: https://bradleyseanf.github.io/monarchmoneycommunity/
+repo_url: https://github.com/bradleyseanf/monarchmoneycommunity
+repo_name: bradleyseanf/monarchmoneycommunity
+edit_uri: edit/dev/docs/
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  font: false
+  icon:
+    logo: material/butterfly-outline
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+
+nav:
+  - API explorer: index.md
+  - Guides:
+      - Getting started: getting-started.md
+      - Authentication: authentication.md
+      - Examples: examples.md
+      - Typed client: typed-client.md
+  - API reference:
+      - Method directory: reference/index.md
+      - MonarchMoney: reference/client.md
+      - TypedMonarchMoney: reference/typed.md
+      - Models: reference/models.md
+      - Exceptions & endpoints: reference/exceptions.md
+  - Contributing:
+      - Documentation & deployment: contributing.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["."]
+          options:
+            allow_inspection: false
+            docstring_style: sphinx
+            filters: ["!^_"]
+            show_if_no_docstring: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            members_order: alphabetical
+            show_source: true
+            show_bases: false
+            heading_level: 2
+            line_length: 80
+
+hooks:
+  - scripts/docs_hooks.py
+
+exclude_docs: |
+  /overrides/
+  /data/
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
+
+validation:
+  nav:
+    omitted_files: warn
+  links:
+    not_found: warn
+    unrecognized_links: warn
+    anchors: warn
+
+watch:
+  - monarchmoney
+  - typedmonarchmoney
+  - scripts/docs_hooks.py
+  - scripts/api_catalog.py
