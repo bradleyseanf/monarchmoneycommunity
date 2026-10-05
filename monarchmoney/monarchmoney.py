@@ -4536,6 +4536,64 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    _TRANSACTION_RULE_MUTATION_ERRORS = """
+                fragment PayloadErrorFields on PayloadError {
+                    fieldErrors {
+                        field
+                        messages
+                        __typename
+                    }
+                    message
+                    code
+                    __typename
+                }
+    """
+
+    @staticmethod
+    def _has_payload_errors(errors: Any) -> bool:
+        if not errors:
+            return False
+        if isinstance(errors, dict):
+            return bool(
+                errors.get("message") or errors.get("fieldErrors") or errors.get("code")
+            )
+        return True
+
+    async def delete_transaction_rule(self, rule_id: str) -> bool:
+        """
+        Deletes a transaction rule.
+
+        Note: Monarch returns ``deleted: false`` even when the delete succeeds,
+        so success is judged by the absence of errors. Deleting an id that does
+        not exist raises a "Not found" error.
+
+        :param rule_id: the id of the rule (from get_transaction_rules).
+        """
+        query = gql(
+            """
+            mutation Common_DeleteTransactionRule($id: ID!) {
+                deleteTransactionRule(id: $id) {
+                    deleted
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        response = await self.gql_call(
+            operation="Common_DeleteTransactionRule",
+            graphql_query=query,
+            variables={"id": rule_id},
+        )
+        payload = response["deleteTransactionRule"]
+        if self._has_payload_errors(payload.get("errors")):
+            raise RequestFailedException(payload.get("errors"))
+        return True
+
     async def get_savings_goal_events(
         self,
         goal_id: str,

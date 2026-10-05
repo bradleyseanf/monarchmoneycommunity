@@ -268,6 +268,10 @@ As of writing this README, the following methods are supported:
       <td>creates a category for transactions</td>
     </tr>
     <tr>
+      <td><code>delete_transaction_rule</code></td>
+      <td>deletes a transaction rule</td>
+    </tr>
+    <tr>
       <td><code>request_accounts_refresh</code></td>
       <td>requests a synchronization / refresh of all accounts linked to Monarch Money. This is a <strong>non-blocking call</strong>. If the user wants to check on the status afterwards, they must call <code>is_accounts_refresh_complete</code>.</td>
     </tr>

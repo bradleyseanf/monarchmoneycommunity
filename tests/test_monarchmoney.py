@@ -7,7 +7,7 @@ import json
 from gql import Client
 from graphql import print_ast
 from monarchmoney import MonarchMoney
-from monarchmoney.monarchmoney import LoginFailedException
+from monarchmoney.monarchmoney import LoginFailedException, RequestFailedException
 
 
 class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
@@ -591,6 +591,29 @@ class TestDuplicateTransactions(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(ValueError, "max_pages must be positive"):
                 await client.find_duplicate_transactions(max_pages=max_pages)
         client.get_transactions.assert_not_awaited()
+
+    async def test_delete_transaction_rule_ignores_deleted_false(self):
+        client = MonarchMoney()
+        client.gql_call = AsyncMock(
+            return_value={"deleteTransactionRule": {"deleted": False, "errors": None}}
+        )
+        self.assertTrue(await client.delete_transaction_rule("rule-1"))
+        self.assertEqual(
+            client.gql_call.await_args.kwargs["variables"], {"id": "rule-1"}
+        )
+
+    async def test_delete_transaction_rule_raises_on_errors(self):
+        client = MonarchMoney()
+        client.gql_call = AsyncMock(
+            return_value={
+                "deleteTransactionRule": {
+                    "deleted": False,
+                    "errors": {"message": "nope", "fieldErrors": None, "code": None},
+                }
+            }
+        )
+        with self.assertRaises(RequestFailedException):
+            await client.delete_transaction_rule("rule-1")
 
 
 if __name__ == "__main__":
