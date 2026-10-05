@@ -4536,6 +4536,94 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    _TRANSACTION_RULE_MUTATION_ERRORS = """
+                fragment PayloadErrorFields on PayloadError {
+                    fieldErrors {
+                        field
+                        messages
+                        __typename
+                    }
+                    message
+                    code
+                    __typename
+                }
+    """
+
+    @staticmethod
+    def _has_payload_errors(errors: Any) -> bool:
+        if not errors:
+            return False
+        if isinstance(errors, dict):
+            return bool(
+                errors.get("message") or errors.get("fieldErrors") or errors.get("code")
+            )
+        return True
+
+    async def create_transaction_rule(
+        self,
+        set_category_id: str,
+        merchant_criteria: Optional[List[Dict[str, str]]] = None,
+        merchant_criteria_use_original_statement: bool = False,
+        amount_criteria: Optional[Dict[str, Any]] = None,
+        category_ids: Optional[List[str]] = None,
+        account_ids: Optional[List[str]] = None,
+        apply_to_existing_transactions: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Creates a transaction rule that recategorizes matching transactions.
+
+        :param set_category_id: the category id to assign when the rule matches.
+        :param merchant_criteria: list of conditions on the merchant, e.g.
+          [{"operator": "eq", "value": "walgreens"}] or
+          [{"operator": "contains", "value": "pharmac"}].
+        :param merchant_criteria_use_original_statement: match merchant_criteria
+          against the original bank statement text instead of the merchant name.
+        :param amount_criteria: e.g. {"operator": "gt", "isExpense": True,
+          "value": 20, "valueRange": None}.
+        :param category_ids: only match transactions currently in these categories.
+        :param account_ids: only match transactions in these accounts.
+        :param apply_to_existing_transactions: also recategorize past matches.
+        :return: the created rule ({"id": ...}).
+        """
+        query = gql(
+            """
+            mutation Common_CreateTransactionRuleMutationV2($input: CreateTransactionRuleInput!) {
+                createTransactionRuleV2(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    transactionRule {
+                        id
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        rule_input: Dict[str, Any] = {
+            "merchantCriteria": merchant_criteria,
+            "merchantCriteriaUseOriginalStatement": merchant_criteria_use_original_statement,
+            "amountCriteria": amount_criteria,
+            "categoryIds": category_ids,
+            "accountIds": account_ids,
+            "setCategoryAction": set_category_id,
+            "applyToExistingTransactions": apply_to_existing_transactions,
+        }
+        response = await self.gql_call(
+            operation="Common_CreateTransactionRuleMutationV2",
+            graphql_query=query,
+            variables={"input": rule_input},
+        )
+        payload = response["createTransactionRuleV2"]
+        if self._has_payload_errors(payload.get("errors")) or not payload.get(
+            "transactionRule"
+        ):
+            raise RequestFailedException(payload.get("errors"))
+        return payload["transactionRule"]
+
     async def get_savings_goal_events(
         self,
         goal_id: str,
