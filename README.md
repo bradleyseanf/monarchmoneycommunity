@@ -276,6 +276,10 @@ As of writing this README, the following methods are supported:
       <td>creates a transaction rule that sets a category for transactions matching merchant, amount, category, or account criteria</td>
     </tr>
     <tr>
+      <td><code>update_transaction_rule</code></td>
+      <td>updates a transaction rule. Reads the current rule and resends its criteria, category action, merchant rename, and tags, because Monarch silently ignores partial rule updates. Required: <code>rule_id</code> (str, from <code>get_transaction_rules()</code>). Optional replacements: <code>set_category_id</code> (str or None), <code>merchant_criteria</code> (list of operator/value dicts or None), <code>merchant_criteria_use_original_statement</code> (bool or None), <code>amount_criteria</code> (dict or None), <code>category_ids</code> and <code>account_ids</code> (lists of ids or None). Omitted replacements keep their current values. Explicit <code>None</code> sends GraphQL null to clear nullable fields. <code>False</code> and empty lists are sent unchanged. <code>apply_to_existing_transactions</code> (bool, default False) also applies the rule to past matches. Example: <code>await mm.update_transaction_rule("rule-1", set_category_id="category-2")</code>. To clear the amount criterion: <code>await mm.update_transaction_rule("rule-1", amount_criteria=None)</code>. Returns the updated rule's id in a dict. Raises <code>RequestFailedException</code> for a missing rule, payload errors, or a silent no-op. Rules with unsupported criteria or actions raise <code>NotImplementedError</code> before the update request.</td>
+    </tr>
+    <tr>
       <td><code>request_accounts_refresh</code></td>
       <td>requests a synchronization / refresh of all accounts linked to Monarch Money. This is a <strong>non-blocking call</strong>. If the user wants to check on the status afterwards, they must call <code>is_accounts_refresh_complete</code>.</td>
     </tr>
