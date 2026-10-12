@@ -452,6 +452,19 @@ class TestMonarchMoney(unittest.IsolatedAsyncioTestCase):
             "Expected needsReview filter to be True",
         )
 
+    async def test_update_transaction_category_moves_group(self):
+        client = MonarchMoney()
+        category = {"id": "cat-1", "name": "Fertility", "group": {"id": "grp-2"}}
+        client.gql_call = AsyncMock(
+            return_value={"updateCategory": {"errors": None, "category": category}}
+        )
+        result = await client.update_transaction_category("cat-1", group_id="grp-2")
+        self.assertEqual(result, category)
+        self.assertEqual(
+            client.gql_call.await_args.kwargs["variables"],
+            {"input": {"id": "cat-1", "group": "grp-2"}},
+        )
+
     @patch.object(Client, "execute_async")
     async def test_update_transaction_owner(self, mock_execute_async):
         """Assign a household member or explicitly restore Shared ownership."""

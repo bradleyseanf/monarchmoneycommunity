@@ -264,6 +264,10 @@ As of writing this README, the following methods are supported:
       <td>deletes a list of transaction categories for transactions</td>
     </tr>
     <tr>
+      <td><code>update_transaction_category(category_id, name=None, icon=None, group_id=None)</code></td>
+      <td>updates a category by its required string <code>category_id</code>. Optional string parameters are <code>name</code> (new name), <code>icon</code> (unicode string or emoji), and <code>group_id</code> (destination group id from <code>get_transaction_category_groups()</code>). Fields set to <code>None</code> are omitted from the request. Example: <code>await mm.update_transaction_category("cat-1", name="Groceries", icon="🛒", group_id="grp-2")</code>. To move only the group: <code>await mm.update_transaction_category("cat-1", group_id="grp-2")</code>. Returns the updated category, including its group.</td>
+    </tr>
+    <tr>
       <td><code>create_transaction_category</code></td>
       <td>creates a category for transactions</td>
     </tr>

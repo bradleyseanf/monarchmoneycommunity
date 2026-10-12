@@ -1992,6 +1992,79 @@ class MonarchMoney(object):
             operation="ManageGetCategoryGroups", graphql_query=query
         )
 
+    async def update_transaction_category(
+        self,
+        category_id: str,
+        name: Optional[str] = None,
+        icon: Optional[str] = None,
+        group_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Updates a transaction category. Only the fields you pass are changed.
+
+        :param category_id: the id of the category to update.
+        :param name: new name.
+        :param icon: new icon (unicode string or emoji).
+        :param group_id: move the category into this category group
+          (ids from get_transaction_category_groups).
+        :return: the updated category, including its group.
+        """
+        query = gql(
+            """
+            mutation Web_UpdateCategory($input: UpdateCategoryInput!) {
+                updateCategory(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    category {
+                        id
+                        name
+                        icon
+                        group {
+                            id
+                            name
+                            type
+                            __typename
+                        }
+                        __typename
+                    }
+                    __typename
+                }
+            }
+
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }
+            """
+        )
+        category_input: Dict[str, Any] = {"id": category_id}
+        if name is not None:
+            category_input["name"] = name
+        if icon is not None:
+            category_input["icon"] = icon
+        if group_id is not None:
+            category_input["group"] = group_id
+
+        response = await self.gql_call(
+            operation="Web_UpdateCategory",
+            graphql_query=query,
+            variables={"input": category_input},
+        )
+        payload = response["updateCategory"]
+        if self._has_payload_errors(payload.get("errors")) or not payload.get(
+            "category"
+        ):
+            raise RequestFailedException(payload.get("errors"))
+        return payload["category"]
+
     async def create_transaction_category(
         self,
         group_id: str,
