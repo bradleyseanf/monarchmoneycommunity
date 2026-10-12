@@ -4466,6 +4466,41 @@ class MonarchMoney(object):
             variables={"input": {"id": goal_id}},
         )
 
+    async def delete_transaction_rule(self, rule_id: str) -> bool:
+        """
+        Deletes a transaction rule.
+
+        Note: Monarch returns ``deleted: false`` even when the delete succeeds,
+        so success is judged by the absence of errors. Deleting an id that does
+        not exist raises a "Not found" error.
+
+        :param rule_id: the id of the rule (from get_transaction_rules).
+        """
+        query = gql(
+            """
+            mutation Common_DeleteTransactionRule($id: ID!) {
+                deleteTransactionRule(id: $id) {
+                    deleted
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        response = await self.gql_call(
+            operation="Common_DeleteTransactionRule",
+            graphql_query=query,
+            variables={"id": rule_id},
+        )
+        payload = response["deleteTransactionRule"]
+        if self._has_payload_errors(payload.get("errors")):
+            raise RequestFailedException(payload.get("errors"))
+        return True
+
     async def get_transaction_rules(self) -> Dict[str, Any]:
         """
         Gets all transaction rules configured in the account.
