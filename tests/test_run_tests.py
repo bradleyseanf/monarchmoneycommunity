@@ -8,7 +8,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
+from gql import GraphQLRequest
+
 from monarchmoney import CaptchaRequiredException, MonarchMoney, RequireMFAException
+from monarchmoney.read_types import JSONObject, JSONValue
 from run_tests import (
     ArgumentResolver,
     LiveReadSuite,
@@ -22,6 +25,19 @@ from typedmonarchmoney import TypedMonarchMoney
 
 
 class TestArgumentResolver(unittest.TestCase):
+    def test_merchant_page_sizes_match_probe_scope(self) -> None:
+        resolver = ArgumentResolver(SampleValues())
+        for client_type in (MonarchMoney, TypedMonarchMoney):
+            client = client_type()
+            for method, limit in (
+                (client.get_merchants, 10),
+                (client.get_all_merchants, 500),
+            ):
+                with self.subTest(client=client_type.__name__, method=method.__name__):
+                    args, kwargs = resolver.resolve(method)
+                    self.assertEqual(args, [])
+                    self.assertEqual(kwargs, {"limit": limit})
+
     def test_transaction_filters_keep_declared_defaults(self):
         resolver = ArgumentResolver(SampleValues(account_id="123", category_id="456"))
         for client_type in (MonarchMoney, TypedMonarchMoney):
@@ -125,6 +141,49 @@ class TestLiveReadSuite(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(suite.reporter.failed, 1)
         self.assertEqual(suite.reporter.skipped, 0)
+
+    async def test_exhaustive_merchant_probe_collects_every_page(self) -> None:
+        merchants: list[JSONValue] = [
+            {"id": f"merchant-{index}"} for index in range(501)
+        ]
+        for client_type in (MonarchMoney, TypedMonarchMoney):
+            with self.subTest(client=client_type.__name__):
+                suite = self.suite(client_type)
+                pages: list[tuple[int, int]] = []
+
+                async def page(
+                    operation: str,
+                    graphql_query: GraphQLRequest,
+                    variables: JSONObject,
+                ) -> JSONObject:
+                    offset = variables["offset"]
+                    limit = variables["limit"]
+                    assert isinstance(offset, int)
+                    assert isinstance(limit, int)
+                    pages.append((limit, offset))
+                    return {
+                        "merchantCount": 1,
+                        "merchants": merchants[offset : offset + limit],
+                    }
+
+                with patch.object(suite.client, "gql_call", AsyncMock(side_effect=page)):
+                    with patch.object(
+                        suite.reporter, "pass_result", wraps=suite.reporter.pass_result
+                    ) as reported:
+                        passed = await suite._check(
+                            "get_all_merchants", suite.client.get_all_merchants
+                        )
+
+                self.assertTrue(passed)
+                self.assertEqual(pages, [(500, 0), (500, 500)])
+                reported.assert_called_once()
+                call = reported.call_args
+                assert call is not None
+                self.assertEqual(
+                    call.args[1], {"merchantCount": 1, "merchants": merchants}
+                )
+                self.assertEqual(suite.reporter.failed, 0)
+                self.assertEqual(suite.reporter.skipped, 0)
 
     async def test_duplicate_probe_fetches_only_one_small_page(self):
         for client_type in (MonarchMoney, TypedMonarchMoney):
