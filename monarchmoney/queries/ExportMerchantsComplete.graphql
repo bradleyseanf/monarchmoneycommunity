@@ -1,0 +1,36 @@
+query ExportMerchantsComplete($offset: Int!, $limit: Int!, $includeMerchantsWithoutTransactions: Boolean!) {
+  merchantCount
+  merchants(
+    offset: $offset
+    limit: $limit
+    includeMerchantsWithoutTransactions: $includeMerchantsWithoutTransactions
+  ) {
+    id
+    name
+    logoUrl
+    transactionCount
+    ruleCount
+    canBeDeleted
+    hasActiveRecurringStreams
+    recurrenceIgnoredAt
+    defaultCategoryApplicationMode
+    defaultCategory {
+      id
+      name
+      icon
+      group {
+        id
+        type
+      }
+    }
+    recurringTransactionStream {
+      id
+      frequency
+      amount
+      baseDate
+      isActive
+    }
+    showDefaultCategoryPrompt
+    createdAt
+  }
+}
