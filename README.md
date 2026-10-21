@@ -128,7 +128,7 @@ As of writing this README, the following methods are supported:
   <tbody>
     <tr>
       <td><code>get_accounts</code></td>
-      <td>gets all the accounts linked to Monarch Money</td>
+      <td>gets the default account list linked to Monarch Money; use <code>get_account_roster()</code> to include deleted and hidden account identities explicitly</td>
     </tr>
     <tr>
       <td><code>get_account_holdings</code></td>
@@ -149,6 +149,46 @@ As of writing this README, the following methods are supported:
     <tr>
       <td><code>get_account_history</code></td>
       <td>gets all daily account history for the specified account</td>
+    </tr>
+    <tr>
+      <td><code>get_account_details(account_id)</code></td>
+      <td>gets the full UI-selected account metadata, settings, notes, provider/owner details, goals, equity data, and daily snapshots; <code>account_id</code> accepts a string or integer. Returns <code>account</code> and <code>snapshotsForAccount</code> without changing <code>get_account_history()</code></td>
+    </tr>
+    <tr>
+      <td><code>get_account_roster(include_deleted=True, include_hidden=True)</code></td>
+      <td>gets account identities from institution settings, including <code>deletedAt</code>, owner, and visibility. Boolean flags control deleted/hidden inclusion. Deleted identities may be inaccessible through the account detail endpoint</td>
+    </tr>
+    <tr>
+      <td><code>get_merchants(limit=100, offset=0, include_merchants_without_transactions=True)</code></td>
+      <td>gets one offset page with full UI-selected merchant settings, default category/application mode, recurrence, rule count, and <code>merchantCount</code>. <code>limit</code> must be positive; <code>offset</code> must be nonnegative</td>
+    </tr>
+    <tr>
+      <td><code>get_all_merchants(limit=100, include_merchants_without_transactions=True)</code></td>
+      <td>collects offset pages until a short or empty page; rejects duplicate merchant IDs with <code>monarchmoney.read_types.MerchantPaginationError</code>. Returns <code>merchants</code> and the first page's reported <code>merchantCount</code>, which can differ from the number collected</td>
+    </tr>
+    <tr>
+      <td><code>get_retail_transactions(first=100, after_cursor=None, filters=None)</code></td>
+      <td>gets one <code>retailTransactionsConnection</code> page, preserving <code>edges</code>, <code>pageInfo</code>, line items, orders, and transaction/category links. Positive integer <code>first</code> controls page size; <code>after_cursor</code> is an opaque string; <code>filters</code> is a GraphQL <code>RetailTransactionFiltersInput</code> dictionary</td>
+    </tr>
+    <tr>
+      <td><code>get_activity_events(first=100, after_cursor=None, exclude_event_types=None)</code></td>
+      <td>gets one <code>activityEvents</code> page without marking notifications read. Positive integer <code>first</code> controls page size; <code>after_cursor</code> is an opaque string; <code>exclude_event_types</code> accepts a list of GraphQL <code>ActivityEventType</code> enum names</td>
+    </tr>
+    <tr>
+      <td><code>get_user_profile()</code></td>
+      <td>gets <code>me</code> with the profile, preferences, onboarding information, and account access metadata selected by the web UI; no parameters</td>
+    </tr>
+    <tr>
+      <td><code>get_household_preferences()</code></td>
+      <td>gets <code>householdPreferences</code>, <code>insightTopics</code>, <code>budgetSystem</code>, and <code>budgetApplyToFutureMonthsDefault</code>; no parameters</td>
+    </tr>
+    <tr>
+      <td><code>get_report_configurations()</code></td>
+      <td>gets saved <code>reportConfigurations</code>, including complete UI-selected transaction filters and report views; no parameters</td>
+    </tr>
+    <tr>
+      <td><code>get_recurring_transaction_streams(include_liabilities=True)</code></td>
+      <td>gets <code>recurringTransactionStreams</code> definitions, review/active status, schedules, next forecast, category, and account. The boolean flag controls liability inclusion; pending streams are included. Preserves inactive records when returned, but the web queries do not establish ignored/deleted stream coverage. Not a complete occurrence history</td>
     </tr>
     <tr>
       <td><code>get_institutions</code></td>
@@ -244,6 +284,41 @@ As of writing this README, the following methods are supported:
     </tr>
   </tbody>
 </table>
+
+### Read-Only Export Examples
+
+These methods use the same authenticated client as the existing getters and return JSON-compatible dictionaries. Single-page methods preserve the server response and do not silently fetch subsequent pages.
+
+```python
+roster = await mm.get_account_roster(include_deleted=True, include_hidden=True)
+account = await mm.get_account_details("account-id")
+merchant_page = await mm.get_merchants(limit=100, offset=0)
+merchants = await mm.get_all_merchants(limit=100)
+profile = await mm.get_user_profile()
+preferences = await mm.get_household_preferences()
+reports = await mm.get_report_configurations()
+streams = await mm.get_recurring_transaction_streams(include_liabilities=True)
+
+retail = await mm.get_retail_transactions(first=100, filters=None)
+while retail["retailTransactionsConnection"]["pageInfo"]["hasNextPage"]:
+    retail = await mm.get_retail_transactions(
+        first=100,
+        after_cursor=retail["retailTransactionsConnection"]["pageInfo"]["endCursor"],
+        filters=None,
+    )
+
+activity = await mm.get_activity_events(first=100, exclude_event_types=[])
+while activity["activityEvents"]["pageInfo"]["hasNextPage"]:
+    activity = await mm.get_activity_events(
+        first=100,
+        after_cursor=activity["activityEvents"]["pageInfo"]["endCursor"],
+        exclude_event_types=[],
+    )
+```
+
+Process or save each cursor page before fetching the next one. Pass the same filters/exclusions on every page. Only `get_all_merchants()` collects all pages automatically. With merchants that have no transactions included, the collected list can exceed `merchantCount`; the helper never treats that reported count as an export limit or claims equality. Offset pagination assumes the merchant list remains stable while scanning; overlapping/repeated IDs raise an error rather than returning an apparently complete export.
+
+`get_account_roster()` is an identity roster, not a replacement for `get_accounts()` metadata. Use its IDs to request details, preserving null responses or access errors for deleted accounts instead of silently excluding them. `get_account_details()` leaves `account` and `snapshotsForAccount` unchanged; the older `get_account_history()` still returns its enriched snapshot list. Recurring stream definitions and their next forecasts are separate from the date-bounded calendar returned by `get_recurring_transactions()`.
 
 ## Mutating Methods
 
