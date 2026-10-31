@@ -1,0 +1,23 @@
+query GetAccountRoster($includeDeleted: Boolean!, $includeHidden: Boolean!) {
+  accounts(filters: {includeDeleted: $includeDeleted, includeHidden: $includeHidden}) {
+    id
+    createdAt
+    displayName
+    subtype {
+      display
+    }
+    mask
+    credential {
+      id
+    }
+    deletedAt
+    hideFromList
+    ownedByUser {
+      id
+      displayName
+      profilePictureUrl
+    }
+    displayLastUpdatedAt
+    updatedAt
+  }
+}

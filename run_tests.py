@@ -355,7 +355,11 @@ class ArgumentResolver:
             ):
                 continue
 
-            value = self._value(parameter)
+            value = (
+                500
+                if method.__name__ == "get_all_merchants" and parameter.name == "limit"
+                else self._value(parameter)
+            )
             if value is None and parameter.default is not inspect.Parameter.empty:
                 continue
             if value is None:

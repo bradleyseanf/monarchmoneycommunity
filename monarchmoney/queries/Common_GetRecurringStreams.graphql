@@ -1,0 +1,49 @@
+query Common_GetRecurringStreams($includeLiabilities: Boolean) {
+  recurringTransactionStreams(
+    includePending: true
+    includeLiabilities: $includeLiabilities
+  ) {
+    stream {
+      id
+      reviewStatus
+      frequency
+      amount
+      baseDate
+      dayOfTheMonth
+      isApproximate
+      isActive
+      name
+      logoUrl
+      recurringType
+      merchant {
+        id
+        name
+      }
+      creditReportLiabilityAccount {
+        id
+        account {
+          id
+        }
+        lastStatement {
+          id
+          dueDate
+        }
+      }
+    }
+    nextForecastedTransaction {
+      date
+      amount
+    }
+    category {
+      id
+      name
+      icon
+    }
+    account {
+      id
+      displayName
+      icon
+      logoUrl
+    }
+  }
+}

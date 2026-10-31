@@ -1,0 +1,55 @@
+query Common_GetMe {
+  me {
+    ...UserFields
+    id
+    profile {
+      id
+      hasSeenCategoriesManagementTour
+      dismissedTransactionsListUpdatesTourAt
+      viewedMarkAsReviewedUpdatesCalloutAt
+      hasDismissedWhatsNewAt
+      collaboratesOnFinancesDetailed
+      userReportedAttributionChannels
+      webUiThemePreference
+      mobileUiThemePreference
+    }
+    attributionData {
+      onboardingQuizCompleted
+    }
+    onboardingTemplate {
+      slug
+      displayName
+      partnerName
+    }
+  }
+}
+
+fragment UserFields on User {
+  birthday
+  email
+  displayName
+  id
+  isSuperuser
+  name
+  timezone
+  hasPassword
+  hasMfaOn
+  externalAuthProviderNames
+  householdRole
+  createdAt
+  avatarColor
+  pendingEmailUpdateVerification {
+    email
+  }
+  profilePicture {
+    id
+    cloudinaryPublicId
+    thumbnailUrl
+  }
+  profilePictureUrl
+  activeSupportAccountAccessGrant {
+    id
+    createdAt
+    expiresAt
+  }
+}

@@ -1,0 +1,280 @@
+query ExportAccountComplete($id: UUID!) {
+  account(id: $id) {
+    id
+    displayName
+    syncDisabled
+    deactivatedAt
+    dataProviderDeactivatedAt
+    isHidden
+    isAsset
+    mask
+    createdAt
+    updatedAt
+    displayLastUpdatedAt
+    currentBalance
+    displayBalance
+    includeInNetWorth
+    hideFromList
+    hideInBudget
+    hideTransactionsFromReports
+    includeBalanceInNetWorth
+    includeInGoalBalance
+    excludeFromDebtPaydown
+    dataProvider
+    dataProviderAccountId
+    isManual
+    transactionsCount
+    holdingsCount
+    manualInvestmentsTrackingMethod
+    order
+    icon
+    logoUrl
+    limit
+    apr
+    minimumPayment
+    plannedPayment
+    interestRate
+    interestRateType
+    type {
+      name
+      display
+      group
+    }
+    subtype {
+      name
+      display
+    }
+    credential {
+      id
+      updateRequired
+      syncDisabledAt
+      syncDisabledReason
+      dataProvider
+      institution {
+        id
+        newConnectionsDisabled
+        plaidInstitutionId
+        name
+        status
+        logo
+        url
+        hasIssuesReported
+        hasIssuesReportedMessage
+        plaidStatus
+        balanceStatus
+        transactionsStatus
+      }
+      hasSyncOrRecentRefreshRequest
+      canBeForceRefreshed
+      disconnectedFromDataProviderAt
+    }
+    institution {
+      id
+      name
+      logo
+      primaryColor
+      url
+      plaidInstitutionId
+      newConnectionsDisabled
+      hasIssuesReported
+      hasIssuesReportedMessage
+      plaidStatus
+      status
+      balanceStatus
+      transactionsStatus
+    }
+    ownedByUser {
+      id
+      displayName
+      profilePictureUrl
+      name
+    }
+    businessEntity {
+      id
+      name
+      logoUrl
+      color
+    }
+    connectionStatus {
+      connectionStatusCode
+      copyTitle
+      inAppSmallCopy
+      inAppCopy
+      helpCenterUrl
+    }
+    notes
+    hasCustomizedLogo
+    invertSyncedBalance
+    canInvertBalance
+    useAvailableBalance
+    canUseAvailableBalance
+    dataProviderCreditLimit
+    dataProviderInterestRateType
+    originalProviderData {
+      apr
+      interestRate
+      minimumPayment
+    }
+    creditReportLiabilityAccount {
+      id
+      lastStatement {
+        id
+        dueDate
+      }
+      recurringTransactionStream {
+        id
+        isActive
+        dayOfTheMonth
+        frequency
+        defaultPaymentAccount {
+          id
+          name
+        }
+        defaultPaymentCategory {
+          id
+          name
+        }
+      }
+    }
+    isLiability
+    canBeForceRefreshed
+    hasSyncOrRecentRefreshRequest
+    linkedGoal {
+      id
+      name
+      type
+      targetDate
+      archivedAt
+    }
+    availableBalanceForGoalsUnmemoized
+    includeInGoalContributions
+    goalAllocatedAmount
+    linkedGoalCandidate {
+      id
+    }
+    balanceNeedingReconciliation
+    signedBalance
+    name
+    company {
+      id
+      name
+      isPublic
+      employmentStatus
+      ownerStartDate
+      ownerEndDate
+      fullyDilutedShares
+      latestFundingRound
+      latestPreferredPrice
+      fmv409aPrice
+      sharePrice
+      valuationMethod
+      priceHistory {
+        date
+        price
+        priceType
+      }
+      linkedAccountId
+      securityId
+      security {
+        id
+        name
+        ticker
+        currentPrice
+        closingPrice
+      }
+      ticker
+    }
+    equityGrants {
+      id
+      grantType
+      grantNickname
+      grantDate
+      quantityGranted
+      vestingSchedule
+      vestingEndDate
+      exerciseEvents
+      strikePrice
+      postTerminationExerciseWindow
+      vestedQuantity
+      unvestedQuantity
+      exercisedQuantity
+      forfeitedQuantity
+      currentValue
+      vestingTimeline {
+        date
+        exercised
+        earlyExercised
+        vested
+        unvested
+        forfeited
+        sold
+        total
+        exercisedValue
+        earlyExercisedValue
+        vestedValue
+        unvestedValue
+        forfeitedValue
+        soldValue
+        totalValue
+      }
+      vestingStartDate
+      vestingScheduleTerms
+      purchasePricePerShare
+      earlyExerciseAllowed
+      filed83bElection
+      notes
+    }
+    deletedAt
+    isTaxable
+    availableBalanceForGoals
+    goalAllocations {
+      id
+      amount
+      currentAmount
+      account {
+        id
+        availableBalanceForGoals
+      }
+      goal {
+        id
+        targetAmount
+        currentAmount
+        completionPercent
+        completedAt
+        archivedAt
+        name
+        priority
+        imageStorageProvider
+        imageStorageProviderId
+        startingAmount
+        type
+        defaultName
+        accountAllocations {
+          id
+          account {
+            id
+            logoUrl
+            icon
+            dataProvider
+            type {
+              name
+              display
+            }
+            subtype {
+              name
+            }
+            institution {
+              id
+              logo
+              primaryColor
+            }
+          }
+        }
+      }
+    }
+  }
+  snapshotsForAccount(accountId: $id) {
+    date
+    signedBalance
+  }
+}

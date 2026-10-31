@@ -16,9 +16,11 @@ from typing import Any, Dict, List, Optional, Union, Literal
 
 import oathtool
 from aiohttp import ClientSession, FormData
-from gql import Client, gql
+from gql import Client, GraphQLRequest, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from graphql import DocumentNode
+
+from .read_api import ReadApiMixin
 
 AUTH_HEADER_KEY = "authorization"
 CSRF_KEY = "csrftoken"
@@ -87,6 +89,13 @@ class CaptchaRequiredException(LoginFailedException):
     pass
 
 
+class _UnsetType:
+    """Distinguishes an omitted update argument from an explicit null."""
+
+
+_UNSET = _UnsetType()
+
+
 def _to_iso_date(
     value: Optional[Union[date, datetime, str]],
 ) -> Optional[str]:
@@ -101,7 +110,7 @@ def _to_iso_date(
     return value
 
 
-class MonarchMoney(object):
+class MonarchMoney(ReadApiMixin):
     def __init__(
         self,
         session_file: str = SESSION_FILE,
@@ -1992,6 +2001,79 @@ class MonarchMoney(object):
             operation="ManageGetCategoryGroups", graphql_query=query
         )
 
+    async def update_transaction_category(
+        self,
+        category_id: str,
+        name: Optional[str] = None,
+        icon: Optional[str] = None,
+        group_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Updates a transaction category. Only the fields you pass are changed.
+
+        :param category_id: the id of the category to update.
+        :param name: new name.
+        :param icon: new icon (unicode string or emoji).
+        :param group_id: move the category into this category group
+          (ids from get_transaction_category_groups).
+        :return: the updated category, including its group.
+        """
+        query = gql(
+            """
+            mutation Web_UpdateCategory($input: UpdateCategoryInput!) {
+                updateCategory(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    category {
+                        id
+                        name
+                        icon
+                        group {
+                            id
+                            name
+                            type
+                            __typename
+                        }
+                        __typename
+                    }
+                    __typename
+                }
+            }
+
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }
+            """
+        )
+        category_input: Dict[str, Any] = {"id": category_id}
+        if name is not None:
+            category_input["name"] = name
+        if icon is not None:
+            category_input["icon"] = icon
+        if group_id is not None:
+            category_input["group"] = group_id
+
+        response = await self.gql_call(
+            operation="Web_UpdateCategory",
+            graphql_query=query,
+            variables={"input": category_input},
+        )
+        payload = response["updateCategory"]
+        if self._has_payload_errors(payload.get("errors")) or not payload.get(
+            "category"
+        ):
+            raise RequestFailedException(payload.get("errors"))
+        return payload["category"]
+
     async def create_transaction_category(
         self,
         group_id: str,
@@ -2880,6 +2962,121 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    async def get_goal_accounts_allocation_summary(self) -> Dict[str, Any]:
+        """
+        Gets, per account, the total balance, the balance not yet allocated
+        to any savings goal, and the split of the balance by goal.
+        """
+        query = gql(
+            """
+            query Common_SavingsGoalAccountsAllocationSummary {
+              goalAccountsAllocationSummary {
+                account {
+                  id
+                  logoUrl
+                  icon
+                  displayName
+                  balanceNeedingReconciliation
+                  __typename
+                }
+                totalBalance
+                availableBalance
+                balancesByGoal {
+                  accountId
+                  goal {
+                    id
+                    ...GoalSummaryFields
+                    __typename
+                  }
+                  amount
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment GoalSummaryFields on SavingsGoal {
+              id
+              type
+              name
+              createdAt
+              archivedAt
+              imageStorageProvider
+              imageStorageProviderId
+              status
+              progress
+              currentBalance
+              targetDate
+              targetAmount
+              hasFutureBudgetDifferentFromCurrentMonth
+              currentMonthActualBudgetAmount
+              currentMonthPlannedContributionAmount
+              plannedMonthlyContribution
+              spendingTotal
+              netContribution
+              netContributionWithSpending
+              netContributionWithoutSpending
+              balanceThisMonth
+              estimatedMonthsUntilCompletion
+              forecastedCompletionDate
+              isSinkingFund
+              priority
+              allocationAmountsByAccount {
+                goalId
+                adjustmentAmount
+                totalAmount
+                spendingAmount
+                contributionsAmount
+                withdrawalsAmount
+                account {
+                  icon
+                  displayName
+                  displayBalance
+                  linkedGoal {
+                    id
+                    __typename
+                  }
+                  subtype {
+                    name
+                    display
+                    __typename
+                  }
+                  ...NewAccountLogoFields
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+
+            fragment NewAccountLogoFields on Account {
+              id
+              dataProvider
+              logoUrl
+              type {
+                name
+                display
+                __typename
+              }
+              subtype {
+                name
+                __typename
+              }
+              institution {
+                id
+                primaryColor
+                __typename
+              }
+              __typename
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_SavingsGoalAccountsAllocationSummary",
+            graphql_query=query,
+        )
+
     async def update_flexible_budget(
         self,
         amount: float,
@@ -3028,6 +3225,125 @@ class MonarchMoney(object):
             operation="Common_ResetBudget",
             variables=variables,
             graphql_query=query,
+        )
+
+    async def set_savings_goal_budget_amount(
+        self,
+        goal_id: str,
+        month: Union[date, datetime, str],
+        amount: float,
+        apply_to_future: bool = True,
+        account_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Sets a savings goal's planned monthly contribution (its budget line).
+
+        :param goal_id: The savings goal id.
+        :param month: The month to set, as a date, datetime, or
+            ``YYYY-MM-DD`` string. Any day in the month is accepted and
+            normalized to the first of the month.
+        :param amount: The planned contribution amount.
+        :param apply_to_future: Also apply the amount to later months
+            (the web app's default).
+        :param account_id: The account for a per-account planned
+            contribution. Omit for the goal's "General contribution".
+        """
+        query = gql(
+            """
+            mutation Common_SetSavingsGoalBudgetAmount($input: SetSavingsGoalBudgetAmountInput!) {
+              setSavingsGoalBudgetAmount(input: $input) {
+                success
+                errors {
+                  ...PayloadErrorFields
+                  __typename
+                }
+                __typename
+              }
+            }
+            fragment PayloadErrorFields on PayloadError {
+              fieldErrors {
+                field
+                messages
+                __typename
+              }
+              message
+              code
+              __typename
+            }
+            """
+        )
+
+        variables = {
+            "input": {
+                "month": _to_iso_date(month)[:7] + "-01",
+                "savingsGoalId": goal_id,
+                "amount": amount,
+                "applyToFuture": apply_to_future,
+                "accountId": account_id,
+            }
+        }
+
+        return await self.gql_call(
+            operation="Common_SetSavingsGoalBudgetAmount",
+            graphql_query=query,
+            variables=variables,
+        )
+
+    async def get_savings_goal_budget_amounts(
+        self,
+        goal_id: str,
+        start_month: Union[date, datetime, str],
+        end_month: Union[date, datetime, str],
+    ) -> Dict[str, Any]:
+        """
+        Gets a savings goal's monthly budget amounts (planned, actual, and
+        remaining, with a per-account breakdown) for a range of months.
+
+        :param goal_id: The savings goal id.
+        :param start_month: The first month, as a date, datetime, or
+            ``YYYY-MM-DD`` string. Any day in the month is accepted and
+            normalized to the first of the month.
+        :param end_month: The last month, normalized the same way.
+        """
+        query = gql(
+            """
+            query Common_SavingsGoalBudgetAmounts($goalId: ID!, $startMonth: Date!, $endMonth: Date!) {
+              savingsGoal(id: $goalId) {
+                id
+                monthlyBudgetAmounts(startMonth: $startMonth, endMonth: $endMonth) {
+                  id
+                  month
+                  plannedAmount
+                  actualAmount
+                  remainingAmount
+                  accountBreakdown {
+                    id
+                    account {
+                      id
+                      growthRate
+                      __typename
+                    }
+                    remainingAmount
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        variables = {
+            "goalId": goal_id,
+            "startMonth": _to_iso_date(start_month)[:7] + "-01",
+            "endMonth": _to_iso_date(end_month)[:7] + "-01",
+        }
+
+        return await self.gql_call(
+            operation="Common_SavingsGoalBudgetAmounts",
+            graphql_query=query,
+            variables=variables,
         )
 
     async def find_duplicate_transactions(
@@ -3670,6 +3986,248 @@ class MonarchMoney(object):
             variables=variables,
         )
 
+    async def delete_merchant(
+        self, merchant_id: str, move_to_merchant_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Deletes a merchant, optionally merging it into another merchant first.
+
+        This is the "Merge & delete" action in Monarch's Edit merchant dialog.
+
+        :param merchant_id: The merchant id to delete.
+        :param move_to_merchant_id: Optional merchant id to move the deleted
+            merchant's relations to. When given, this merges ``merchant_id``
+            into ``move_to_merchant_id`` (the web app's "Merge & delete"):
+            the source's transactions are reassigned to the target and the
+            source merchant is removed. When omitted, the merchant record is
+            deleted with nothing moved; the web app only offers this for
+            merchants with no transactions.
+        :raises ValueError: if ``move_to_merchant_id`` equals ``merchant_id``.
+        """
+        if move_to_merchant_id is not None and move_to_merchant_id == merchant_id:
+            raise ValueError("move_to_merchant_id must differ from merchant_id")
+
+        query = gql(
+            """
+            mutation Common_DeleteMerchant($merchantId: ID!, $moveToId: ID) {
+              deleteMerchant(id: $merchantId, moveRelationsToMerchantId: $moveToId) {
+                success
+                __typename
+              }
+            }
+            """
+        )
+
+        variables: Dict[str, Any] = {"merchantId": merchant_id}
+        if move_to_merchant_id is not None:
+            variables["moveToId"] = move_to_merchant_id
+
+        return await self.gql_call(
+            operation="Common_DeleteMerchant",
+            graphql_query=query,
+            variables=variables,
+        )
+
+    async def get_savings_goals(self) -> Dict[str, Any]:
+        """
+        Gets all Savings Goals in the household (the Goals page "Save up" tab).
+
+        Archived goals are returned too; there is no filter variable, so
+        callers filter on ``status == "archived"`` or a non-null
+        ``archivedAt``.
+
+        This covers Savings Goals only. Legacy goals are the ``goalsV2``
+        field returned by ``get_budgets``.
+        """
+        query = gql(
+            """
+            query Common_SavingsGoals {
+              savingsGoals {
+                ...GoalSummaryFields
+                __typename
+              }
+            }
+
+            fragment GoalSummaryFields on SavingsGoal {
+              id
+              type
+              name
+              createdAt
+              archivedAt
+              imageStorageProvider
+              imageStorageProviderId
+              status
+              progress
+              currentBalance
+              targetDate
+              targetAmount
+              hasFutureBudgetDifferentFromCurrentMonth
+              currentMonthActualBudgetAmount
+              currentMonthPlannedContributionAmount
+              plannedMonthlyContribution
+              spendingTotal
+              netContribution
+              netContributionWithSpending
+              netContributionWithoutSpending
+              balanceThisMonth
+              estimatedMonthsUntilCompletion
+              forecastedCompletionDate
+              isSinkingFund
+              priority
+              allocationAmountsByAccount {
+                goalId
+                adjustmentAmount
+                totalAmount
+                spendingAmount
+                contributionsAmount
+                withdrawalsAmount
+                account {
+                  icon
+                  displayName
+                  displayBalance
+                  linkedGoal {
+                    id
+                    __typename
+                  }
+                  subtype {
+                    name
+                    display
+                    __typename
+                  }
+                  ...NewAccountLogoFields
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+
+            fragment NewAccountLogoFields on Account {
+              id
+              dataProvider
+              logoUrl
+              type {
+                name
+                display
+                __typename
+              }
+              subtype {
+                name
+                __typename
+              }
+              institution {
+                id
+                primaryColor
+                __typename
+              }
+              __typename
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_SavingsGoals",
+            graphql_query=query,
+        )
+
+    async def get_savings_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Gets a single Savings Goal by id.
+
+        :param goal_id: The savings goal id.
+        """
+        query = gql(
+            """
+            query Common_SavingsGoal($id: ID!) {
+              savingsGoal(id: $id) {
+                ...GoalSummaryFields
+                __typename
+              }
+            }
+
+            fragment GoalSummaryFields on SavingsGoal {
+              id
+              type
+              name
+              createdAt
+              archivedAt
+              imageStorageProvider
+              imageStorageProviderId
+              status
+              progress
+              currentBalance
+              targetDate
+              targetAmount
+              hasFutureBudgetDifferentFromCurrentMonth
+              currentMonthActualBudgetAmount
+              currentMonthPlannedContributionAmount
+              plannedMonthlyContribution
+              spendingTotal
+              netContribution
+              netContributionWithSpending
+              netContributionWithoutSpending
+              balanceThisMonth
+              estimatedMonthsUntilCompletion
+              forecastedCompletionDate
+              isSinkingFund
+              priority
+              allocationAmountsByAccount {
+                goalId
+                adjustmentAmount
+                totalAmount
+                spendingAmount
+                contributionsAmount
+                withdrawalsAmount
+                account {
+                  icon
+                  displayName
+                  displayBalance
+                  linkedGoal {
+                    id
+                    __typename
+                  }
+                  subtype {
+                    name
+                    display
+                    __typename
+                  }
+                  ...NewAccountLogoFields
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+
+            fragment NewAccountLogoFields on Account {
+              id
+              dataProvider
+              logoUrl
+              type {
+                name
+                display
+                __typename
+              }
+              subtype {
+                name
+                __typename
+              }
+              institution {
+                id
+                primaryColor
+                __typename
+              }
+              __typename
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_SavingsGoal",
+            graphql_query=query,
+            variables={"id": goal_id},
+        )
+
     async def get_recurring_transactions(
         self,
         start_date: Optional[str] = None,
@@ -3734,6 +4292,33 @@ class MonarchMoney(object):
 
         return await self.gql_call(
             "Web_GetUpcomingRecurringTransactionItems", query, variables
+        )
+
+    async def get_goal_options(self) -> Dict[str, Any]:
+        """
+        Gets the preset Savings Goal templates offered when creating a goal
+        (e.g. Emergency fund, Down payment, Custom), with their default names,
+        objectives, types and images.
+        """
+        query = gql(
+            """
+            query Common_GoalOptions {
+              goalOptions {
+                defaultName
+                objective
+                type
+                allowMultiSelect
+                defaultImageStorageProvider
+                defaultImageStorageProviderId
+                __typename
+              }
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_GoalOptions",
+            graphql_query=query,
         )
 
     async def get_credit_history(self) -> Dict[str, Any]:
@@ -3818,6 +4403,112 @@ class MonarchMoney(object):
         _, last_day = calendar.monthrange(now.year, now.month)
         end_of_month = now.replace(day=last_day)
         return _to_iso_date(end_of_month)
+
+    async def archive_savings_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Archives a savings goal.
+
+        Per Monarch's archive dialog this withdraws all allocated funds,
+        keeps the goal's history, and removes it from future budgets. It is
+        reversible with :meth:`unarchive_savings_goal`, but the withdrawn
+        allocations are not restored.
+
+        :param goal_id: The savings goal id to archive.
+        """
+        query = gql(
+            """
+            mutation Common_ArchiveSavingsGoal($input: ArchiveSavingsGoalInput!) {
+              archiveSavingsGoal(input: $input) {
+                savingsGoal {
+                  id
+                  archivedAt
+                  status
+                  __typename
+                }
+                errors {
+                  message
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_ArchiveSavingsGoal",
+            graphql_query=query,
+            variables={"input": {"id": goal_id}},
+        )
+
+    async def unarchive_savings_goal(self, goal_id: str) -> Dict[str, Any]:
+        """
+        Unarchives a previously archived savings goal.
+
+        Allocations withdrawn when the goal was archived are not restored.
+
+        :param goal_id: The savings goal id to unarchive.
+        """
+        query = gql(
+            """
+            mutation Common_UnarchiveSavingsGoal($input: UnarchiveSavingsGoalInput!) {
+              unarchiveSavingsGoal(input: $input) {
+                savingsGoal {
+                  id
+                  archivedAt
+                  status
+                  __typename
+                }
+                errors {
+                  message
+                  __typename
+                }
+                __typename
+              }
+            }
+            """
+        )
+
+        return await self.gql_call(
+            operation="Common_UnarchiveSavingsGoal",
+            graphql_query=query,
+            variables={"input": {"id": goal_id}},
+        )
+
+    async def delete_transaction_rule(self, rule_id: str) -> bool:
+        """
+        Deletes a transaction rule.
+
+        Note: Monarch returns ``deleted: false`` even when the delete succeeds,
+        so success is judged by the absence of errors. Deleting an id that does
+        not exist raises a "Not found" error.
+
+        :param rule_id: the id of the rule (from get_transaction_rules).
+        """
+        query = gql(
+            """
+            mutation Common_DeleteTransactionRule($id: ID!) {
+                deleteTransactionRule(id: $id) {
+                    deleted
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        response = await self.gql_call(
+            operation="Common_DeleteTransactionRule",
+            graphql_query=query,
+            variables={"id": rule_id},
+        )
+        payload = response["deleteTransactionRule"]
+        if self._has_payload_errors(payload.get("errors")):
+            raise RequestFailedException(payload.get("errors"))
+        return True
 
     async def get_transaction_rules(self) -> Dict[str, Any]:
         """
@@ -3962,10 +4653,457 @@ class MonarchMoney(object):
             graphql_query=query,
         )
 
+    _TRANSACTION_RULE_CRITERIA_FIELDS = (
+        "merchantCriteriaUseOriginalStatement",
+        "merchantCriteria",
+        "originalStatementCriteria",
+        "merchantNameCriteria",
+        "amountCriteria",
+        "categoryIds",
+        "accountIds",
+    )
+
+    # Rule fields update_transaction_rule does not round-trip yet. Updating a
+    # rule that uses any of these could silently drop them, so it refuses.
+    _TRANSACTION_RULE_UNSUPPORTED_FIELDS = (
+        "criteriaOwnerIsJoint",
+        "criteriaOwnerUserIds",
+        "criteriaBusinessEntityIds",
+        "criteriaBusinessEntityIsUnassigned",
+        "linkGoalAction",
+        "linkSavingsGoalAction",
+        "needsReviewByUserAction",
+        "unassignNeedsReviewByUserAction",
+        "sendNotificationAction",
+        "setHideFromReportsAction",
+        "setLinkToPaydownBudgetAction",
+        "reviewStatusAction",
+        "actionSetOwnerIsJoint",
+        "actionSetOwner",
+        "actionSetBusinessEntity",
+        "actionSetBusinessEntityIsUnassigned",
+        "splitTransactionsAction",
+    )
+
+    _TRANSACTION_RULE_MUTATION_ERRORS = """
+                fragment PayloadErrorFields on PayloadError {
+                    fieldErrors {
+                        field
+                        messages
+                        __typename
+                    }
+                    message
+                    code
+                    __typename
+                }
+    """
+
+    @staticmethod
+    def _strip_typename(value: Any) -> Any:
+        if isinstance(value, list):
+            return [MonarchMoney._strip_typename(v) for v in value]
+        if isinstance(value, dict):
+            return {
+                k: MonarchMoney._strip_typename(v)
+                for k, v in value.items()
+                if k != "__typename"
+            }
+        return value
+
+    @staticmethod
+    def _has_payload_errors(errors: Any) -> bool:
+        if not errors:
+            return False
+        if isinstance(errors, dict):
+            return bool(
+                errors.get("message") or errors.get("fieldErrors") or errors.get("code")
+            )
+        return True
+
+    async def create_transaction_rule(
+        self,
+        set_category_id: str,
+        merchant_criteria: Optional[List[Dict[str, str]]] = None,
+        merchant_criteria_use_original_statement: bool = False,
+        amount_criteria: Optional[Dict[str, Any]] = None,
+        category_ids: Optional[List[str]] = None,
+        account_ids: Optional[List[str]] = None,
+        apply_to_existing_transactions: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Creates a transaction rule that recategorizes matching transactions.
+
+        :param set_category_id: the category id to assign when the rule matches.
+        :param merchant_criteria: list of conditions on the merchant, e.g.
+          [{"operator": "eq", "value": "walgreens"}] or
+          [{"operator": "contains", "value": "pharmac"}].
+        :param merchant_criteria_use_original_statement: match merchant_criteria
+          against the original bank statement text instead of the merchant name.
+        :param amount_criteria: e.g. {"operator": "gt", "isExpense": True,
+          "value": 20, "valueRange": None}.
+        :param category_ids: only match transactions currently in these categories.
+        :param account_ids: only match transactions in these accounts.
+        :param apply_to_existing_transactions: also recategorize past matches.
+        :return: the created rule ({"id": ...}).
+        """
+        query = gql(
+            """
+            mutation Common_CreateTransactionRuleMutationV2($input: CreateTransactionRuleInput!) {
+                createTransactionRuleV2(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    transactionRule {
+                        id
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        rule_input: Dict[str, Any] = {
+            "merchantCriteria": merchant_criteria,
+            "merchantCriteriaUseOriginalStatement": merchant_criteria_use_original_statement,
+            "amountCriteria": amount_criteria,
+            "categoryIds": category_ids,
+            "accountIds": account_ids,
+            "setCategoryAction": set_category_id,
+            "applyToExistingTransactions": apply_to_existing_transactions,
+        }
+        response = await self.gql_call(
+            operation="Common_CreateTransactionRuleMutationV2",
+            graphql_query=query,
+            variables={"input": rule_input},
+        )
+        payload = response["createTransactionRuleV2"]
+        if self._has_payload_errors(payload.get("errors")) or not payload.get(
+            "transactionRule"
+        ):
+            raise RequestFailedException(payload.get("errors"))
+        return payload["transactionRule"]
+
+    async def update_transaction_rule(
+        self,
+        rule_id: str,
+        set_category_id: Union[str, None, _UnsetType] = _UNSET,
+        merchant_criteria: Union[List[Dict[str, str]], None, _UnsetType] = _UNSET,
+        merchant_criteria_use_original_statement: Union[
+            bool, None, _UnsetType
+        ] = _UNSET,
+        amount_criteria: Union[Dict[str, Any], None, _UnsetType] = _UNSET,
+        category_ids: Union[List[str], None, _UnsetType] = _UNSET,
+        account_ids: Union[List[str], None, _UnsetType] = _UNSET,
+        apply_to_existing_transactions: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Updates an existing transaction rule.
+
+        Monarch's update mutation does not support partial updates: an input that
+        omits the rule's existing criteria returns an empty error payload and
+        changes nothing. Monarch's web app resends the whole rule on every save,
+        so this method does the same: it reads the current rule and resends its
+        criteria, category, merchant rename, and tags along with your changes.
+        Rules that link goals, split transactions, or set review status are
+        refused until those shapes are verified.
+
+        :param rule_id: the id of the rule (from get_transaction_rules).
+        :param set_category_id: new category id to assign when the rule matches.
+        :param merchant_criteria, merchant_criteria_use_original_statement,
+          amount_criteria, category_ids, account_ids: replace those criteria.
+          Omitted arguments keep their current values. Explicit None is sent as
+          GraphQL null, allowing nullable criteria or the category action to be
+          cleared. False and empty lists are sent as provided.
+        :param apply_to_existing_transactions: also recategorize past matches.
+        :return: the updated rule ({"id": ...}).
+        """
+        rules = (await self.get_transaction_rules())["transactionRules"]
+        current = next((r for r in rules if r["id"] == rule_id), None)
+        if current is None:
+            raise RequestFailedException(f"Transaction rule {rule_id} not found")
+
+        unsupported = [
+            field
+            for field in self._TRANSACTION_RULE_UNSUPPORTED_FIELDS
+            if current.get(field)
+        ]
+        if unsupported:
+            raise NotImplementedError(
+                "update_transaction_rule can't safely round-trip these rule "
+                "fields yet: " + ", ".join(unsupported)
+            )
+
+        rule_input: Dict[str, Any] = {
+            "id": rule_id,
+            "applyToExistingTransactions": apply_to_existing_transactions,
+        }
+        # Mirror what Monarch's web app sends on save: every criteria field
+        # (including nulls) plus the current actions, flattened to ids.
+        for field in self._TRANSACTION_RULE_CRITERIA_FIELDS:
+            rule_input[field] = self._strip_typename(current.get(field))
+        category_action = current.get("setCategoryAction")
+        merchant_action = current.get("setMerchantAction")
+        rule_input["setCategoryAction"] = (
+            category_action["id"] if category_action else None
+        )
+        # setMerchantAction takes the merchant *name*. Passing an id creates a
+        # new merchant literally named after that id.
+        rule_input["setMerchantAction"] = (
+            merchant_action["name"] if merchant_action else None
+        )
+        rule_input["addTagsAction"] = (
+            [tag["id"] for tag in current["addTagsAction"]]
+            if current.get("addTagsAction")
+            else None
+        )
+
+        overrides = {
+            "setCategoryAction": set_category_id,
+            "merchantCriteria": merchant_criteria,
+            "merchantCriteriaUseOriginalStatement": merchant_criteria_use_original_statement,
+            "amountCriteria": amount_criteria,
+            "categoryIds": category_ids,
+            "accountIds": account_ids,
+        }
+        rule_input.update({k: v for k, v in overrides.items() if v is not _UNSET})
+
+        if merchant_criteria is not _UNSET:
+            # Newer rules use one of these fields instead of merchantCriteria.
+            # Replace the active matcher and clear the other representations so
+            # an old condition cannot survive a replacement (or explicit None).
+            newer_fields = ("originalStatementCriteria", "merchantNameCriteria")
+            active_newer = [
+                field for field in newer_fields if current.get(field) is not None
+            ]
+            if not active_newer:
+                target_field = "merchantCriteria"
+            elif merchant_criteria_use_original_statement is not _UNSET:
+                target_field = (
+                    "originalStatementCriteria"
+                    if merchant_criteria_use_original_statement
+                    else "merchantNameCriteria"
+                )
+            elif len(active_newer) == 1:
+                target_field = active_newer[0]
+            else:
+                target_field = (
+                    "originalStatementCriteria"
+                    if current.get("merchantCriteriaUseOriginalStatement")
+                    else "merchantNameCriteria"
+                )
+            for field in ("merchantCriteria", *newer_fields):
+                rule_input[field] = None
+            rule_input[target_field] = merchant_criteria
+
+        query = gql(
+            """
+            mutation Common_UpdateTransactionRuleMutationV2($input: UpdateTransactionRuleInput!) {
+                updateTransactionRuleV2(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    transactionRule {
+                        id
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            """
+            + self._TRANSACTION_RULE_MUTATION_ERRORS
+        )
+        response = await self.gql_call(
+            operation="Common_UpdateTransactionRuleMutationV2",
+            graphql_query=query,
+            variables={"input": rule_input},
+        )
+        payload = response["updateTransactionRuleV2"]
+        if self._has_payload_errors(payload.get("errors")) or not payload.get(
+            "transactionRule"
+        ):
+            raise RequestFailedException(
+                payload.get("errors") or f"Transaction rule {rule_id} was not updated"
+            )
+        return payload["transactionRule"]
+
+    async def get_savings_goal_events(
+        self,
+        goal_id: str,
+        limit: int = 50,
+        offset: int = 0,
+        start_date: Optional[Union[date, datetime, str]] = None,
+        end_date: Optional[Union[date, datetime, str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Gets the paginated event history (contributions, withdrawals, etc.)
+        for a savings goal.
+
+        :param goal_id: The savings goal id.
+        :param limit: The maximum number of events to return.
+        :param offset: The number of events to skip before returning results.
+        :param start_date: Optional earliest event date (date, datetime, or
+            "yyyy-mm-dd"). Omitted from the request when not given.
+        :param end_date: Optional latest event date (date, datetime, or
+            "yyyy-mm-dd"). Omitted from the request when not given.
+
+        Page with ``offset=nextOffset`` while ``hasMoreEvents`` is true.
+        ``nextOffset`` is never null, so don't stop on a falsy value.
+        """
+        query = gql(
+            """
+            query Common_SavingsGoalEventsPaginated($id: ID!, $limit: Int, $offset: Int, $startDate: Date, $endDate: Date) {
+              savingsGoal(id: $id) {
+                id
+                name
+                imageStorageProvider
+                imageStorageProviderId
+                goalEventsPaginated(limit: $limit, offset: $offset, startDate: $startDate, endDate: $endDate) {
+                  events {
+                    ...GoalEventFields
+                    __typename
+                  }
+                  totalEventCount
+                  hasMoreEvents
+                  nextOffset
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment GoalEventFields on GoalEvent {
+              id
+              date
+              amount
+              type
+              createdAt
+              canDelete
+              includeInBudget
+              notes
+              account {
+                icon
+                displayName
+                ...NewAccountLogoFields
+                __typename
+              }
+              transaction {
+                ...TransactionOverviewFields
+                __typename
+              }
+              __typename
+            }
+
+            fragment NewAccountLogoFields on Account {
+              id
+              dataProvider
+              logoUrl
+              type {
+                name
+                display
+                __typename
+              }
+              subtype {
+                name
+                __typename
+              }
+              institution {
+                id
+                primaryColor
+                __typename
+              }
+              __typename
+            }
+
+            fragment TransactionOverviewFields on Transaction {
+              id
+              ownedByUser {
+                id
+                name
+                __typename
+              }
+              ownershipOverriddenAt
+              amount
+              pending
+              date
+              hideFromReports
+              plaidName
+              notes
+              isRecurring
+              reviewStatus
+              needsReview
+              attachments {
+                id
+                extension
+                filename
+                originalAssetUrl
+                publicId
+                sizeBytes
+                __typename
+              }
+              isSplitTransaction
+              createdAt
+              updatedAt
+              category {
+                id
+                name
+                __typename
+              }
+              merchant {
+                name
+                id
+                transactionsCount
+                __typename
+              }
+              account {
+                id
+                displayName
+                __typename
+              }
+              businessEntity {
+                id
+                name
+                __typename
+              }
+              tags {
+                id
+                name
+                color
+                order
+                __typename
+              }
+              savingsGoalEvent {
+                id
+                goal {
+                  id
+                  name
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+            """
+        )
+
+        variables: Dict[str, Any] = {"id": goal_id, "limit": limit, "offset": offset}
+        if start_date is not None:
+            variables["startDate"] = _to_iso_date(start_date)
+        if end_date is not None:
+            variables["endDate"] = _to_iso_date(end_date)
+
+        return await self.gql_call(
+            operation="Common_SavingsGoalEventsPaginated",
+            graphql_query=query,
+            variables=variables,
+        )
+
     async def gql_call(
         self,
         operation: str,
-        graphql_query: DocumentNode,
+        graphql_query: Union[DocumentNode, GraphQLRequest],
         variables: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         """
