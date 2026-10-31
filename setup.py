@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 from pathlib import Path
 
 here = Path(__file__).resolve().parent
@@ -19,7 +19,7 @@ setup(
     license_files=[],
     keywords="monarch money, financial, money, personal finance",
     install_requires=install_requires,
-    packages=["monarchmoney", "monarchmoney.queries", "typedmonarchmoney"],
+    packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
     platforms="any",

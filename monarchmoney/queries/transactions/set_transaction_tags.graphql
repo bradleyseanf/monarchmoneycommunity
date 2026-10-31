@@ -1,0 +1,29 @@
+
+          mutation Web_SetTransactionTags($input: SetTransactionTagsInput!) {
+            setTransactionTags(input: $input) {
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              transaction {
+                id
+                tags {
+                  id
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+          }
+
+          fragment PayloadErrorFields on PayloadError {
+            fieldErrors {
+              field
+              messages
+              __typename
+            }
+            message
+            code
+            __typename
+          }

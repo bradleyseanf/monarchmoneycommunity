@@ -1,0 +1,15 @@
+
+            mutation Web_ParseUploadBalanceHistorySession($input: ParseBalanceHistoryInput!) {
+                parseBalanceHistory(input: $input) {
+                    uploadBalanceHistorySession {
+                        ...UploadBalanceHistorySessionFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            fragment UploadBalanceHistorySessionFields on UploadBalanceHistorySession {
+                sessionKey
+                status
+                __typename
+            }

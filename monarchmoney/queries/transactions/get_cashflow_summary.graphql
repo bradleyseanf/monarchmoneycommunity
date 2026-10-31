@@ -1,0 +1,13 @@
+
+          query Web_GetCashFlowPage($filters: TransactionFilterInput) {
+            summary: aggregates(filters: $filters, fillEmptyValues: true) {
+              summary {
+                sumIncome
+                sumExpense
+                savings
+                savingsRate
+                __typename
+              }
+              __typename
+            }
+          }

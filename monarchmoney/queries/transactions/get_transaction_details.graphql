@@ -1,0 +1,134 @@
+
+          query GetTransactionDrawer($id: UUID!, $redirectPosted: Boolean) {
+            getTransaction(id: $id, redirectPosted: $redirectPosted) {
+              id
+              ownedByUser {
+                id
+                name
+                __typename
+              }
+              ownershipOverriddenAt
+              amount
+              pending
+              isRecurring
+              date
+              originalDate
+              hideFromReports
+              needsReview
+              reviewedAt
+              reviewedByUser {
+                id
+                name
+                __typename
+              }
+              plaidName
+              notes
+              hasSplitTransactions
+              isSplitTransaction
+              isManual
+              splitTransactions {
+                id
+                ...TransactionDrawerSplitMessageFields
+                __typename
+              }
+              originalTransaction {
+                id
+                ...OriginalTransactionFields
+                __typename
+              }
+              attachments {
+                id
+                publicId
+                extension
+                sizeBytes
+                filename
+                originalAssetUrl
+                __typename
+              }
+              account {
+                id
+                ...TransactionDrawerAccountSectionFields
+                __typename
+              }
+              category {
+                id
+                __typename
+              }
+              goal {
+                id
+                __typename
+              }
+              merchant {
+                id
+                name
+                transactionCount
+                logoUrl
+                recurringTransactionStream {
+                  id
+                  __typename
+                }
+                __typename
+              }
+              tags {
+                id
+                name
+                color
+                order
+                __typename
+              }
+              needsReviewByUser {
+                id
+                __typename
+              }
+              __typename
+            }
+            myHousehold {
+              users {
+                id
+                name
+                __typename
+              }
+              __typename
+            }
+          }
+
+          fragment TransactionDrawerSplitMessageFields on Transaction {
+            id
+            amount
+            merchant {
+              id
+              name
+              __typename
+            }
+            category {
+              id
+              name
+              __typename
+            }
+            __typename
+          }
+
+          fragment OriginalTransactionFields on Transaction {
+            id
+            date
+            amount
+            merchant {
+              id
+              name
+              __typename
+            }
+            __typename
+          }
+
+          fragment TransactionDrawerAccountSectionFields on Account {
+            id
+            displayName
+            logoUrl
+            id
+            mask
+            subtype {
+              display
+              __typename
+            }
+            __typename
+          }

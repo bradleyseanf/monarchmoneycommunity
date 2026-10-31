@@ -1,0 +1,33 @@
+
+            mutation Web_UpdateCategory($input: UpdateCategoryInput!) {
+                updateCategory(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    category {
+                        id
+                        name
+                        icon
+                        group {
+                            id
+                            name
+                            type
+                            __typename
+                        }
+                        __typename
+                    }
+                    __typename
+                }
+            }
+
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }

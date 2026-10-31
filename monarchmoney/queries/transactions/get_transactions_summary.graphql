@@ -1,0 +1,23 @@
+
+            query GetTransactionsPage($filters: TransactionFilterInput) {
+              aggregates(filters: $filters) {
+                summary {
+                  ...TransactionsSummaryFields
+                  __typename
+                }
+                __typename
+              }
+            }
+
+            fragment TransactionsSummaryFields on TransactionsSummary {
+              avg
+              count
+              max
+              maxExpense
+              sum
+              sumIncome
+              sumExpense
+              first
+              last
+              __typename
+            }

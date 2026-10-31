@@ -1,0 +1,66 @@
+
+          query Web_GetCashFlowPage($filters: TransactionFilterInput) {
+            byCategory: aggregates(filters: $filters, groupBy: ["category"]) {
+              groupBy {
+                category {
+                  id
+                  name
+                  group {
+                    id
+                    type
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+              summary {
+                sum
+                __typename
+              }
+              __typename
+            }
+            byCategoryGroup: aggregates(filters: $filters, groupBy: ["categoryGroup"]) {
+              groupBy {
+                categoryGroup {
+                  id
+                  name
+                  type
+                  __typename
+                }
+                __typename
+              }
+              summary {
+                sum
+                __typename
+              }
+              __typename
+            }
+            byMerchant: aggregates(filters: $filters, groupBy: ["merchant"]) {
+              groupBy {
+                merchant {
+                  id
+                  name
+                  logoUrl
+                  __typename
+                }
+                __typename
+              }
+              summary {
+                sumIncome
+                sumExpense
+                __typename
+              }
+              __typename
+            }
+            summary: aggregates(filters: $filters, fillEmptyValues: true) {
+              summary {
+                sumIncome
+                sumExpense
+                savings
+                savingsRate
+                __typename
+              }
+              __typename
+            }
+          }

@@ -1,0 +1,18 @@
+
+            mutation Common_GetTransactionAttachmentUploadInfo($transactionId: UUID!) {
+                getTransactionAttachmentUploadInfo(transactionId: $transactionId) {
+                    info {
+                        path
+                        requestParams {
+                            timestamp
+                            folder
+                            signature
+                            api_key
+                            upload_preset
+                            __typename
+                        }
+                        __typename
+                    }
+                    __typename
+                }
+            }

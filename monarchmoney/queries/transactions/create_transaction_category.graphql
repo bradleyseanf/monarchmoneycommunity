@@ -1,0 +1,48 @@
+
+            mutation Web_CreateCategory($input: CreateCategoryInput!) {
+                createCategory(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    category {
+                        id
+                        ...CategoryFormFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }
+            fragment CategoryFormFields on Category {
+                id
+                order
+                name
+                systemCategory
+                systemCategoryDisplayName
+                budgetVariability
+                isSystemCategory
+                isDisabled
+                group {
+                    id
+                    type
+                    groupLevelBudgetingEnabled
+                    __typename
+                }
+                rolloverPeriod {
+                    id
+                    startMonth
+                    startingBalance
+                    __typename
+                }
+                __typename
+            }

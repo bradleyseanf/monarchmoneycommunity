@@ -1,0 +1,22 @@
+
+            mutation Common_StartRetailSync($syncId: ID!) {
+                startRetailSync(id: $syncId) {
+                    retailSync {
+                        id
+                        vendor
+                        status
+                        startedAt
+                        endedAt
+                        createdAt
+                        updatedAt
+                    }
+                    errors {
+                        ...PayloadErrorFields
+                    }
+                }
+            }
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors { field messages }
+                message
+                code
+            }

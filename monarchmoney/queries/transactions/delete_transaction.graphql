@@ -1,0 +1,22 @@
+
+          mutation Common_DeleteTransactionMutation($input: DeleteTransactionMutationInput!) {
+            deleteTransaction(input: $input) {
+              deleted
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              __typename
+            }
+          }
+
+          fragment PayloadErrorFields on PayloadError {
+            fieldErrors {
+              field
+              messages
+              __typename
+            }
+            message
+            code
+            __typename
+          }

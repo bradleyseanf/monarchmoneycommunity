@@ -1,0 +1,12 @@
+
+            query Web_GetUploadBalanceHistorySession($sessionKey: String!) {
+                uploadBalanceHistorySession(sessionKey: $sessionKey) {
+                    ...UploadBalanceHistorySessionFields
+                    __typename
+                }
+            }
+            fragment UploadBalanceHistorySessionFields on UploadBalanceHistorySession {
+                sessionKey
+                status
+                __typename
+            }

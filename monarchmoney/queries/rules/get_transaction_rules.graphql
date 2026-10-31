@@ -1,0 +1,130 @@
+
+            query GetTransactionRules {
+                transactionRules {
+                    order
+                    ...TransactionRuleFields
+                }
+            }
+
+            fragment TransactionRuleFields on TransactionRuleV2 {
+                id
+                merchantCriteriaUseOriginalStatement
+                merchantCriteria {
+                    operator
+                    value
+                }
+                originalStatementCriteria {
+                    operator
+                    value
+                }
+                merchantNameCriteria {
+                    operator
+                    value
+                }
+                amountCriteria {
+                    operator
+                    isExpense
+                    value
+                    valueRange {
+                        lower
+                        upper
+                    }
+                }
+                categoryIds
+                accountIds
+                categories {
+                    id
+                    name
+                    icon
+                }
+                accounts {
+                    id
+                    displayName
+                    icon
+                    logoUrl
+                }
+                criteriaOwnerIsJoint
+                criteriaOwnerUserIds
+                criteriaOwnerUsers {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                criteriaBusinessEntityIds
+                criteriaBusinessEntityIsUnassigned
+                criteriaBusinessEntities {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
+                setMerchantAction {
+                    id
+                    name
+                }
+                setCategoryAction {
+                    id
+                    name
+                    icon
+                }
+                addTagsAction {
+                    id
+                    name
+                    color
+                }
+                linkGoalAction {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                }
+                linkSavingsGoalAction {
+                    id
+                    name
+                    imageStorageProvider
+                    imageStorageProviderId
+                }
+                needsReviewByUserAction {
+                    id
+                    name
+                    displayName
+                }
+                unassignNeedsReviewByUserAction
+                sendNotificationAction
+                setHideFromReportsAction
+                setLinkToPaydownBudgetAction
+                reviewStatusAction
+                actionSetOwnerIsJoint
+                actionSetOwner {
+                    id
+                    displayName
+                    profilePictureUrl
+                }
+                actionSetBusinessEntity {
+                    id
+                    name
+                    logoUrl
+                    color
+                }
+                actionSetBusinessEntityIsUnassigned
+                recentApplicationCount
+                lastAppliedAt
+                splitTransactionsAction {
+                    amountType
+                    splitsInfo {
+                        categoryId
+                        merchantName
+                        amount
+                        goalId
+                        savingsGoalId
+                        tags
+                        hideFromReports
+                        reviewStatus
+                        needsReviewByUserId
+                        ownerUserId
+                        ownerIsJoint
+                        businessEntityId
+                        businessEntityIsUnassigned
+                    }
+                }
+            }

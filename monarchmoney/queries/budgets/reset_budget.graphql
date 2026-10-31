@@ -1,0 +1,11 @@
+
+            mutation Common_ResetBudget($input: ResetBudgetMutationInput!) {
+              resetBudget(input: $input) {
+                errors {
+                  message
+                  code
+                  __typename
+                }
+                __typename
+              }
+            }

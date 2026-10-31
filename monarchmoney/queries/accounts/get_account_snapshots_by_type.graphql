@@ -1,0 +1,14 @@
+
+            query GetSnapshotsByAccountType($startDate: Date!, $timeframe: Timeframe!) {
+                snapshotsByAccountType(startDate: $startDate, timeframe: $timeframe) {
+                    accountType
+                    month
+                    balance
+                    __typename
+                }
+                accountTypes {
+                    name
+                    group
+                    __typename
+                }
+            }

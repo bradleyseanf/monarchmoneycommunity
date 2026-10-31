@@ -1,0 +1,7 @@
+
+            mutation Common_DeleteMerchant($merchantId: ID!, $moveToId: ID) {
+              deleteMerchant(id: $merchantId, moveRelationsToMerchantId: $moveToId) {
+                success
+                __typename
+              }
+            }

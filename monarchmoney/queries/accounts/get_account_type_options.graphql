@@ -1,0 +1,22 @@
+
+            query GetAccountTypeOptions {
+                accountTypeOptions {
+                    type {
+                        name
+                        display
+                        group
+                        possibleSubtypes {
+                            display
+                            name
+                            __typename
+                        }
+                        __typename
+                    }
+                    subtype {
+                        name
+                        display
+                        __typename
+                    }
+                    __typename
+                }
+            }

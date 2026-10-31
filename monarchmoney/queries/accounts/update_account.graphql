@@ -1,0 +1,88 @@
+
+            mutation Common_UpdateAccount($input: UpdateAccountMutationInput!) {
+                updateAccount(input: $input) {
+                    account {
+                        ...AccountFields
+                        __typename
+                    }
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    __typename
+                }
+            }
+
+            fragment AccountFields on Account {
+                id
+                displayName
+                syncDisabled
+                deactivatedAt
+                isHidden
+                isAsset
+                mask
+                createdAt
+                updatedAt
+                displayLastUpdatedAt
+                currentBalance
+                displayBalance
+                includeInNetWorth
+                hideFromList
+                hideTransactionsFromReports
+                includeBalanceInNetWorth
+                includeInGoalBalance
+                dataProvider
+                dataProviderAccountId
+                isManual
+                transactionsCount
+                holdingsCount
+                manualInvestmentsTrackingMethod
+                order
+                icon
+                logoUrl
+                deactivatedAt
+                type {
+                    name
+                    display
+                    group
+                    __typename
+                }
+                subtype {
+                    name
+                    display
+                    __typename
+                }
+                credential {
+                    id
+                    updateRequired
+                    disconnectedFromDataProviderAt
+                    dataProvider
+                    institution {
+                        id
+                        plaidInstitutionId
+                        name
+                        status
+                        __typename
+                    }
+                    __typename
+                }
+                institution {
+                    id
+                    name
+                    primaryColor
+                    url
+                    __typename
+                }
+                __typename
+            }
+
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }

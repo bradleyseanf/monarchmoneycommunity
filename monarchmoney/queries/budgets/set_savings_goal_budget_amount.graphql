@@ -1,0 +1,21 @@
+
+            mutation Common_SetSavingsGoalBudgetAmount($input: SetSavingsGoalBudgetAmountInput!) {
+              setSavingsGoalBudgetAmount(input: $input) {
+                success
+                errors {
+                  ...PayloadErrorFields
+                  __typename
+                }
+                __typename
+              }
+            }
+            fragment PayloadErrorFields on PayloadError {
+              fieldErrors {
+                field
+                messages
+                __typename
+              }
+              message
+              code
+              __typename
+            }
