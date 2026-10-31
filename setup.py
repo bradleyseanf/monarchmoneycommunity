@@ -19,7 +19,14 @@ setup(
     license_files=[],
     keywords="monarch money, financial, money, personal finance",
     install_requires=install_requires,
-    packages=find_packages(),
+    packages=find_packages(
+        include=[
+            "monarchmoney",
+            "monarchmoney.*",
+            "typedmonarchmoney",
+            "typedmonarchmoney.*",
+        ]
+    ),
     include_package_data=True,
     zip_safe=False,
     platforms="any",

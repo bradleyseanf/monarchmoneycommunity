@@ -1,6 +1,8 @@
 """Uploads client operations."""
 
 from .monarchmoney import (
+    StringIO,
+    csv,
     Any,
     BalanceHistoryRow,
     DEFAULT_DELAY_SECS,
@@ -313,3 +315,23 @@ class UploadsMixin:
         return await self.gql_call(
             "Web_GetUploadBalanceHistorySession", query, variables
         )
+
+    def _convert_to_csv_string(self, csv_content: List[BalanceHistoryRow]) -> str:
+        """
+        Converts a list of BalanceHistoryRow to CSV string
+        :param csv_content: A list of BalanceHistoryRow to upload to the account balance
+        """
+
+        if not csv_content:
+            return ""
+
+        csv_string = StringIO()
+        writer = csv.writer(csv_string)
+        writer.writerow(["Date", "Amount", "Account Name"])
+
+        for row in csv_content:
+            writer.writerow(
+                [row.date.strftime("%Y-%m-%d"), row.amount, row.account_name]
+            )
+
+        return csv_string.getvalue()

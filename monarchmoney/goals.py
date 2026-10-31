@@ -1,5 +1,7 @@
 """Goals client operations."""
 
+import importlib
+
 from .monarchmoney import (
     Any,
     Dict,
@@ -15,6 +17,9 @@ def _query(operation: str):
     from .monarchmoney import _query as load_query
 
     return load_query(operation)
+
+
+_facade = importlib.import_module(__package__ + ".monarchmoney")
 
 
 class GoalsMixin:
@@ -135,3 +140,26 @@ class GoalsMixin:
             graphql_query=query,
             variables=variables,
         )
+
+    def _get_current_date(self) -> str:
+        """
+        Returns the current date as a string formatted like %Y-%m-%d.
+        """
+        return _facade._to_iso_date(_facade.datetime.now())
+
+    def _get_start_of_current_month(self) -> str:
+        """
+        Returns the date for the first day of the current month as a string formatted as %Y-%m-%d.
+        """
+        now = _facade.datetime.now()
+        start_of_month = now.replace(day=1)
+        return _facade._to_iso_date(start_of_month)
+
+    def _get_end_of_current_month(self) -> str:
+        """
+        Returns the date for the last day of the current month as a string formatted as %Y-%m-%d.
+        """
+        now = _facade.datetime.now()
+        _, last_day = _facade.calendar.monthrange(now.year, now.month)
+        end_of_month = now.replace(day=last_day)
+        return _facade._to_iso_date(end_of_month)
