@@ -156,3 +156,34 @@ Stop when `hasMoreEvents` is false; `nextOffset` is not a completion indicator. 
 ## Handle mutation results
 
 Mutation methods can return an `errors` field within the operation's payload. Inspect that field before treating a change as successful. Consult the [client reference](reference/client.md) for the specific method's parameters and return structure.
+
+## Combined read-only export example
+
+These methods use the same authenticated client as the existing getters and return JSON-compatible dictionaries. Single-page methods preserve the server response and do not silently fetch subsequent pages.
+
+```python
+roster = await mm.get_account_roster(include_deleted=True, include_hidden=True)
+account = await mm.get_account_details("account-id")
+merchant_page = await mm.get_merchants(limit=100, offset=0)
+merchants = await mm.get_all_merchants(limit=100)
+profile = await mm.get_user_profile()
+preferences = await mm.get_household_preferences()
+reports = await mm.get_report_configurations()
+streams = await mm.get_recurring_transaction_streams(include_liabilities=True)
+
+retail = await mm.get_retail_transactions(first=100, filters=None)
+while retail["retailTransactionsConnection"]["pageInfo"]["hasNextPage"]:
+    retail = await mm.get_retail_transactions(
+        first=100,
+        after_cursor=retail["retailTransactionsConnection"]["pageInfo"]["endCursor"],
+        filters=None,
+    )
+
+activity = await mm.get_activity_events(first=100, exclude_event_types=[])
+while activity["activityEvents"]["pageInfo"]["hasNextPage"]:
+    activity = await mm.get_activity_events(
+        first=100,
+        after_cursor=activity["activityEvents"]["pageInfo"]["endCursor"],
+        exclude_event_types=[],
+    )
+```

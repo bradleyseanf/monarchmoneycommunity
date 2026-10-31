@@ -157,6 +157,25 @@ async def get_items(self):
             {choice["type"] for choice in choices}, {"string", "number", "null"}
         )
 
+    def test_query_resource_is_resolved_without_importing_client(self):
+        from tempfile import TemporaryDirectory
+
+        method = ast.parse(
+            "async def get_export(self):\n"
+            '    return await self.gql_call(operation="Export", graphql_query=_query("Export"))'
+        ).body[0]
+        with TemporaryDirectory() as directory:
+            query_dir = Path(directory) / "monarchmoney/queries"
+            query_dir.mkdir(parents=True)
+            (query_dir / "Export.graphql").write_text(
+                "query Export { items { id } }", encoding="utf-8"
+            )
+            source, operation, variables, fields = _graphql(method, Path(directory))
+        self.assertEqual(operation.name.value, "Export")
+        self.assertEqual(variables, [])
+        self.assertEqual(fields, ["items.id"])
+        self.assertIn("query Export", source)
+
     def test_graphql_fields_expand_fragments_and_preserve_aliases(self):
         fields = self.method("get_transactions")["response_fields"]
         self.assertIn("allTransactions.results.merchant.name", fields)

@@ -276,7 +276,7 @@ def _python_example(method, parameters, client):
     return prefix + f"{assignment}{awaited}mm.{method.name}({call_args})"
 
 
-def _graphql(method):
+def _graphql(method, root=None):
     strings = [
         node.args[0].value
         for node in ast.walk(method)
@@ -287,6 +287,21 @@ def _graphql(method):
         and isinstance(node.args[0], ast.Constant)
         and isinstance(node.args[0].value, str)
     ]
+    resource_names = [
+        node.args[0].value
+        for node in ast.walk(method)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_query"
+        and len(node.args) == 1
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    ]
+    for name in resource_names:
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*", name):
+            raise ValueError(f"{method.name}: invalid query resource name")
+        resource = (root or Path.cwd()) / "monarchmoney/queries" / f"{name}.graphql"
+        strings.append(resource.read_text(encoding="utf-8"))
     if not strings:
         return None, None, [], []
     if len(strings) != 1:
@@ -793,7 +808,7 @@ def build_catalog(root: Path) -> dict:
         for method in _public_methods(module, client):
             name = method.name
             parameters = _parameters(method)
-            source, operation, variables, fields = _graphql(method)
+            source, operation, variables, fields = _graphql(method, root)
             return_type = (
                 ast.unparse(method.returns)
                 if method.returns is not None
