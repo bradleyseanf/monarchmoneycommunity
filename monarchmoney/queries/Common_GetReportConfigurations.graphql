@@ -1,0 +1,169 @@
+query Common_GetReportConfigurations {
+  reportConfigurations {
+    ...ReportConfigurationFields
+  }
+}
+
+fragment ReportConfigurationFields on ReportConfiguration {
+  id
+  displayName
+  transactionFilterSet {
+    ...TransactionFilterSetFields
+  }
+  reportView {
+    analysisScope
+    chartType
+    chartCalculation
+    chartLayout
+    chartDensity
+    dimensions
+    timeframe
+  }
+}
+
+fragment TransactionFilterSetFields on TransactionFilterSet {
+  id
+  displayName
+  categories {
+    id
+    name
+    icon
+  }
+  excludedCategories {
+    id
+    name
+    icon
+  }
+  categoryGroups {
+    id
+    name
+    type
+  }
+  excludedCategoryGroups {
+    id
+    name
+    type
+  }
+  accounts {
+    id
+    displayName
+    logoUrl
+    icon
+  }
+  excludedAccounts {
+    id
+    displayName
+    logoUrl
+    icon
+  }
+  merchants {
+    id
+    name
+    logoUrl
+  }
+  excludedMerchants {
+    id
+    name
+    logoUrl
+  }
+  tags {
+    id
+    name
+    color
+  }
+  tagMatchMode
+  excludedTags {
+    id
+    name
+    color
+  }
+  excludeTagMatchMode
+  isUntagged
+  goals {
+    id
+    name
+    imageStorageProvider
+    imageStorageProviderId
+  }
+  excludedGoals {
+    id
+    name
+    imageStorageProvider
+    imageStorageProviderId
+  }
+  savingsGoals {
+    id
+    name
+    imageStorageProvider
+    imageStorageProviderId
+  }
+  excludedSavingsGoals {
+    id
+    name
+    imageStorageProvider
+    imageStorageProviderId
+  }
+  searchQuery
+  systemCategories
+  systemCategoryGroups
+  categoryType
+  isUncategorized
+  budgetVariability
+  isFlexSpending
+  startDate
+  endDate
+  timeframePeriod {
+    unit
+    value
+    includeCurrent
+  }
+  createdBefore
+  createdAfter
+  absAmountGte
+  absAmountLte
+  isSplit
+  isRecurring
+  isInvestmentAccount
+  isPending
+  creditsOnly
+  debitsOnly
+  hasNotes
+  hasAttachments
+  hiddenFromReports
+  importedFromMint
+  syncedFromInstitution
+  needsReview
+  needsReviewUnassigned
+  needsReviewByUser {
+    id
+    name
+  }
+  ownershipSet {
+    includeJointlyOwned
+    users {
+      id
+      name
+      profilePictureUrl
+    }
+    excludedUsers {
+      id
+      name
+      profilePictureUrl
+    }
+  }
+  businessEntitySet {
+    includeUnassigned
+    businessEntities {
+      id
+      name
+      logoUrl
+      color
+    }
+    excludedBusinessEntities {
+      id
+      name
+      logoUrl
+      color
+    }
+  }
+}

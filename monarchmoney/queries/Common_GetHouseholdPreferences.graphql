@@ -1,0 +1,40 @@
+query Common_GetHouseholdPreferences {
+  insightTopics {
+    topic
+    parent
+  }
+  householdPreferences {
+    id
+    ...HouseholdPreferencesFields
+  }
+  ...HouseholdBudgetSettingsFields
+}
+
+fragment HouseholdPreferencesFields on HouseholdPreferences {
+  id
+  newTransactionsNeedReview
+  uncategorizedTransactionsNeedReview
+  pendingTransactionsCanBeEdited
+  accountGroupOrder
+  aiAssistantEnabled
+  llmEnrichmentEnabled
+  investmentTransactionsEnabled
+  budgetApplyToFutureMonthsDefault
+  hiddenTransactionsBetaEnabled
+  collaborationToolsEnabled
+  aggDataSharingEnabled
+  aiModelTrainingOnUserDataEnabled
+  excludeBusinessFromBudget
+  continuousFinancialMonitoringEnabled
+  eligibleForFinancialInsights
+  defaultCategoriesExperimentEnabled
+  forecastMonteCarloExperimentArm
+  assistantEngineExperimentArm
+  sunsetCashFlowExperimentArm
+  disabledInsightTopics
+}
+
+fragment HouseholdBudgetSettingsFields on Query {
+  budgetSystem
+  budgetApplyToFutureMonthsDefault
+}

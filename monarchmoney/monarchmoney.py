@@ -16,9 +16,11 @@ from typing import Any, Dict, List, Optional, Union, Literal
 
 import oathtool
 from aiohttp import ClientSession, FormData
-from gql import Client, gql
+from gql import Client, GraphQLRequest, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from graphql import DocumentNode
+
+from .read_api import ReadApiMixin
 
 AUTH_HEADER_KEY = "authorization"
 CSRF_KEY = "csrftoken"
@@ -108,7 +110,7 @@ def _to_iso_date(
     return value
 
 
-class MonarchMoney(object):
+class MonarchMoney(ReadApiMixin):
     def __init__(
         self,
         session_file: str = SESSION_FILE,
@@ -5101,7 +5103,7 @@ class MonarchMoney(object):
     async def gql_call(
         self,
         operation: str,
-        graphql_query: DocumentNode,
+        graphql_query: Union[DocumentNode, GraphQLRequest],
         variables: Dict[str, Any] = {},
     ) -> Dict[str, Any]:
         """

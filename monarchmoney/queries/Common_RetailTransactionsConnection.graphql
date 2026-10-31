@@ -1,0 +1,96 @@
+query Common_RetailTransactionsConnection($first: Int!, $afterCursor: String, $filters: RetailTransactionFiltersInput) {
+  retailTransactionsConnection(
+    first: $first
+    after: $afterCursor
+    filters: $filters
+  ) {
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...RetailTransactionRowFields
+      }
+    }
+  }
+}
+
+fragment RetailTransactionRowFields on RetailTransaction {
+  ...RetailTransactionFields
+  retailSyncId
+  lineItems {
+    ...RetailLineItemFields
+  }
+  retailOrder {
+    __typename
+    id
+    vendorOrderId
+    vendor
+    inStorePurchase
+    merchantName
+    date
+    grandTotal
+    displayStatus
+    totalBeforeTax
+    tax
+  }
+}
+
+fragment RetailTransactionFields on RetailTransaction {
+  __typename
+  id
+  date
+  total
+  transactionType
+  transactionUpdateSkipped
+  transaction {
+    id
+    amount
+    isManual
+    hasSplitTransactions
+    pending
+    category {
+      id
+      name
+      icon
+    }
+    merchant {
+      id
+      name
+      logoUrl
+    }
+    splitTransactions {
+      id
+      amount
+      date
+      pending
+      category {
+        id
+        name
+        icon
+      }
+      merchant {
+        id
+        name
+        logoUrl
+      }
+    }
+  }
+}
+
+fragment RetailLineItemFields on RetailLineItem {
+  __typename
+  id
+  title
+  quantity
+  price
+  total
+  isAssociatedToRetailTransaction
+  category {
+    __typename
+    id
+    name
+    icon
+  }
+}
