@@ -1,11 +1,15 @@
+import inspect
+import json
 import unittest
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from gql import Client
 from graphql import print_ast
 
 from monarchmoney import MonarchMoney
-from monarchmoney.read_types import JSONObject
+from monarchmoney.read_types import JSONObject, MerchantPaginationError
+from typedmonarchmoney.monarchmoney_typed import TypedMonarchMoney
 
 
 class TestReadApi(unittest.IsolatedAsyncioTestCase):
@@ -365,3 +369,72 @@ class TestReadApi(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await self.client.get_merchants(offset=-1)
         self.execute.assert_not_awaited()
+
+
+class TestDirectReadMethods(unittest.TestCase):
+    def test_new_getters_live_on_raw_client_and_are_inherited_by_typed_client(
+        self,
+    ) -> None:
+        methods = (
+            "get_account_details",
+            "get_account_roster",
+            "get_merchants",
+            "get_all_merchants",
+            "get_retail_transactions",
+            "get_activity_events",
+            "get_user_profile",
+            "get_household_preferences",
+            "get_report_configurations",
+            "get_recurring_transaction_streams",
+        )
+        for name in methods:
+            with self.subTest(name=name):
+                self.assertIn(name, MonarchMoney.__dict__)
+                self.assertIs(
+                    getattr(TypedMonarchMoney, name), MonarchMoney.__dict__[name]
+                )
+
+    def test_pagination_error_remains_public_type(self) -> None:
+        error = MerchantPaginationError(4, "duplicate merchant id")
+        self.assertEqual(error.offset, 4)
+        self.assertEqual(error.reason, "duplicate merchant id")
+        self.assertIsInstance(error, RuntimeError)
+
+
+class TestLegacyReadImportCompatibility(unittest.TestCase):
+    def test_signatures_match_170_baseline(self) -> None:
+        baseline = json.loads(
+            (Path(__file__).with_name("read_api_170_signatures.json")).read_text()
+        )
+        for name, signature in baseline.items():
+            with self.subTest(name=name):
+                self.assertEqual(
+                    str(inspect.signature(getattr(MonarchMoney, name))), signature
+                )
+                self.assertTrue(
+                    inspect.iscoroutinefunction(getattr(MonarchMoney, name))
+                )
+
+    def test_legacy_imports_and_monkeypatch_reach_direct_client(self) -> None:
+        from monarchmoney.read_api import (
+            MerchantPaginationError as LegacyError,
+            ReadApiMixin,
+            _query,
+        )
+        from monarchmoney.monarchmoney import _query as direct_query
+
+        self.assertIs(ReadApiMixin, MonarchMoney)
+        self.assertIs(LegacyError, MerchantPaginationError)
+        self.assertIs(_query, direct_query)
+        with patch.object(
+            ReadApiMixin, "get_user_profile", new=AsyncMock(return_value={"me": None})
+        ):
+            self.assertEqual(
+                self.run_async(MonarchMoney().get_user_profile()), {"me": None}
+            )
+
+    @staticmethod
+    def run_async(coroutine):
+        import asyncio
+
+        return asyncio.run(coroutine)

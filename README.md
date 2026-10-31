@@ -289,31 +289,64 @@ As of writing this README, the following methods are supported:
 
 These methods use the same authenticated client as the existing getters and return JSON-compatible dictionaries. Single-page methods preserve the server response and do not silently fetch subsequent pages.
 
+Account roster:
+
 ```python
 roster = await mm.get_account_roster(include_deleted=True, include_hidden=True)
+```
+
+Account details:
+
+```python
 account = await mm.get_account_details("account-id")
+```
+
+Merchant page:
+
+```python
 merchant_page = await mm.get_merchants(limit=100, offset=0)
+```
+
+All merchants:
+
+```python
 merchants = await mm.get_all_merchants(limit=100)
-profile = await mm.get_user_profile()
-preferences = await mm.get_household_preferences()
-reports = await mm.get_report_configurations()
-streams = await mm.get_recurring_transaction_streams(include_liabilities=True)
+```
 
+Retail transaction page:
+
+```python
 retail = await mm.get_retail_transactions(first=100, filters=None)
-while retail["retailTransactionsConnection"]["pageInfo"]["hasNextPage"]:
-    retail = await mm.get_retail_transactions(
-        first=100,
-        after_cursor=retail["retailTransactionsConnection"]["pageInfo"]["endCursor"],
-        filters=None,
-    )
+```
 
+Activity event page:
+
+```python
 activity = await mm.get_activity_events(first=100, exclude_event_types=[])
-while activity["activityEvents"]["pageInfo"]["hasNextPage"]:
-    activity = await mm.get_activity_events(
-        first=100,
-        after_cursor=activity["activityEvents"]["pageInfo"]["endCursor"],
-        exclude_event_types=[],
-    )
+```
+
+User profile:
+
+```python
+profile = await mm.get_user_profile()
+```
+
+Household preferences:
+
+```python
+preferences = await mm.get_household_preferences()
+```
+
+Report configurations:
+
+```python
+reports = await mm.get_report_configurations()
+```
+
+Recurring streams:
+
+```python
+streams = await mm.get_recurring_transaction_streams(include_liabilities=True)
 ```
 
 Process or save each cursor page before fetching the next one. Pass the same filters/exclusions on every page. Only `get_all_merchants()` collects all pages automatically. With merchants that have no transactions included, the collected list can exceed `merchantCount`; the helper never treats that reported count as an export limit or claims equality. Offset pagination assumes the merchant list remains stable while scanning; overlapping/repeated IDs raise an error rather than returning an apparently complete export.

@@ -1,0 +1,12 @@
+{
+  "get_account_details": "(self, account_id: 'str | int') -> 'JSONObject'",
+  "get_account_roster": "(self, include_deleted: 'bool' = True, include_hidden: 'bool' = True) -> 'JSONObject'",
+  "get_merchants": "(self, limit: 'int' = 100, offset: 'int' = 0, include_merchants_without_transactions: 'bool' = True) -> 'JSONObject'",
+  "get_all_merchants": "(self, limit: 'int' = 100, include_merchants_without_transactions: 'bool' = True) -> 'MerchantsResponse'",
+  "get_retail_transactions": "(self, first: 'int' = 100, after_cursor: 'str | None' = None, filters: 'JSONObject | None' = None) -> 'JSONObject'",
+  "get_activity_events": "(self, first: 'int' = 100, after_cursor: 'str | None' = None, exclude_event_types: 'list[str] | None' = None) -> 'JSONObject'",
+  "get_user_profile": "(self) -> 'JSONObject'",
+  "get_household_preferences": "(self) -> 'JSONObject'",
+  "get_report_configurations": "(self) -> 'JSONObject'",
+  "get_recurring_transaction_streams": "(self, include_liabilities: 'bool' = True) -> 'JSONObject'"
+}
