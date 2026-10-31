@@ -53,7 +53,10 @@ class ReadApiMixin(Protocol):
         return await self.gql_call(
             operation="GetAccountRoster",
             graphql_query=_query("GetAccountRoster"),
-            variables={"includeDeleted": include_deleted, "includeHidden": include_hidden},
+            variables={
+                "includeDeleted": include_deleted,
+                "includeHidden": include_hidden,
+            },
         )
 
     async def get_merchants(
@@ -100,7 +103,9 @@ class ReadApiMixin(Protocol):
             count = page.get("merchantCount")
             records = page.get("merchants")
             if not isinstance(count, int) or isinstance(count, bool) or count < 0:
-                raise MerchantPaginationError(offset, "merchantCount must be a nonnegative integer")
+                raise MerchantPaginationError(
+                    offset, "merchantCount must be a nonnegative integer"
+                )
             if not isinstance(records, list):
                 raise MerchantPaginationError(offset, "merchants must be a list")
             if offset == 0:
@@ -110,7 +115,9 @@ class ReadApiMixin(Protocol):
                     raise MerchantPaginationError(offset, "merchant must be an object")
                 merchant_id = record.get("id")
                 if not isinstance(merchant_id, str) or not merchant_id:
-                    raise MerchantPaginationError(offset, "merchant id must be a nonempty string")
+                    raise MerchantPaginationError(
+                        offset, "merchant id must be a nonempty string"
+                    )
                 if merchant_id in seen_ids:
                     raise MerchantPaginationError(offset, "duplicate merchant id")
                 seen_ids.add(merchant_id)

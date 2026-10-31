@@ -10,21 +10,43 @@ class TestMerchantPagination(unittest.IsolatedAsyncioTestCase):
         for reported_count in (0, 2, 100):
             with self.subTest(reported_count=reported_count):
                 pages = [
-                    {"merchantCount": reported_count, "merchants": [{"id": "a"}, {"id": "b"}]},
-                    {"merchantCount": reported_count + 1, "merchants": [{"id": "c"}, {"id": "d"}]},
+                    {
+                        "merchantCount": reported_count,
+                        "merchants": [{"id": "a"}, {"id": "b"}],
+                    },
+                    {
+                        "merchantCount": reported_count + 1,
+                        "merchants": [{"id": "c"}, {"id": "d"}],
+                    },
                     {"merchantCount": reported_count + 1, "merchants": [{"id": "e"}]},
                 ]
                 client = MonarchMoney()
-                with patch.object(client, "gql_call", AsyncMock(side_effect=pages)) as call:
+                with patch.object(
+                    client, "gql_call", AsyncMock(side_effect=pages)
+                ) as call:
 
                     result = await client.get_all_merchants(limit=2)
 
-                self.assertEqual(result, {
-                    "merchantCount": reported_count,
-                    "merchants": [{"id": merchant_id} for merchant_id in "abcde"],
-                })
-                self.assertEqual([entry.kwargs["variables"]["offset"] for entry in call.await_args_list], [0, 2, 4])
-                self.assertTrue(all(entry.kwargs["variables"]["includeMerchantsWithoutTransactions"] for entry in call.await_args_list))
+                self.assertEqual(
+                    result,
+                    {
+                        "merchantCount": reported_count,
+                        "merchants": [{"id": merchant_id} for merchant_id in "abcde"],
+                    },
+                )
+                self.assertEqual(
+                    [
+                        entry.kwargs["variables"]["offset"]
+                        for entry in call.await_args_list
+                    ],
+                    [0, 2, 4],
+                )
+                self.assertTrue(
+                    all(
+                        entry.kwargs["variables"]["includeMerchantsWithoutTransactions"]
+                        for entry in call.await_args_list
+                    )
+                )
 
     async def test_exact_page_multiple_requires_empty_terminal_page(self) -> None:
         client = MonarchMoney()
@@ -34,19 +56,30 @@ class TestMerchantPagination(unittest.IsolatedAsyncioTestCase):
         ]
         with patch.object(client, "gql_call", AsyncMock(side_effect=pages)) as call:
 
-            result = await client.get_all_merchants(limit=2, include_merchants_without_transactions=False)
+            result = await client.get_all_merchants(
+                limit=2, include_merchants_without_transactions=False
+            )
 
         self.assertEqual(len(result["merchants"]), 2)
         self.assertEqual(call.await_count, 2)
         awaited = call.await_args
         assert awaited is not None
-        self.assertEqual(awaited.kwargs["variables"], {
-            "limit": 2, "offset": 2, "includeMerchantsWithoutTransactions": False,
-        })
+        self.assertEqual(
+            awaited.kwargs["variables"],
+            {
+                "limit": 2,
+                "offset": 2,
+                "includeMerchantsWithoutTransactions": False,
+            },
+        )
 
     async def test_empty_initial_page_preserves_reported_count(self) -> None:
         client = MonarchMoney()
-        with patch.object(client, "gql_call", AsyncMock(return_value={"merchantCount": 5, "merchants": []})) as call:
+        with patch.object(
+            client,
+            "gql_call",
+            AsyncMock(return_value={"merchantCount": 5, "merchants": []}),
+        ) as call:
 
             result = await client.get_all_merchants()
 
@@ -55,7 +88,10 @@ class TestMerchantPagination(unittest.IsolatedAsyncioTestCase):
 
     async def test_repeated_page_is_rejected_instead_of_looping(self) -> None:
         client = MonarchMoney()
-        page: JSONObject = {"merchantCount": 100, "merchants": [{"id": "a"}, {"id": "b"}]}
+        page: JSONObject = {
+            "merchantCount": 100,
+            "merchants": [{"id": "a"}, {"id": "b"}],
+        }
         with patch.object(client, "gql_call", AsyncMock(return_value=page)) as call:
 
             with self.assertRaises(MerchantPaginationError) as caught:

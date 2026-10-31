@@ -166,7 +166,9 @@ class TestLiveReadSuite(unittest.IsolatedAsyncioTestCase):
                         "merchants": merchants[offset : offset + limit],
                     }
 
-                with patch.object(suite.client, "gql_call", AsyncMock(side_effect=page)):
+                with patch.object(
+                    suite.client, "gql_call", AsyncMock(side_effect=page)
+                ):
                     with patch.object(
                         suite.reporter, "pass_result", wraps=suite.reporter.pass_result
                     ) as reported:
