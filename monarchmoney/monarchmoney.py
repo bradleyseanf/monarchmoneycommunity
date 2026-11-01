@@ -2,6 +2,7 @@ import asyncio
 import calendar
 import csv
 import getpass
+import io
 import json
 import mimetypes
 import os
@@ -13,6 +14,7 @@ from dataclasses import dataclass
 from io import StringIO
 from datetime import datetime, date, timedelta
 from typing import Any, Dict, List, Optional, Union, Literal
+from urllib.parse import urlparse
 
 import oathtool
 from aiohttp import ClientSession, FormData
@@ -120,6 +122,29 @@ def _to_iso_date(
     if isinstance(value, date):
         return value.isoformat()
     return value
+
+
+def _is_monarch_url(url: str) -> bool:
+    """True only for HTTPS URLs whose host is monarch.com or a subdomain of it."""
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme == "https" and (
+        host == "monarch.com" or host.endswith(".monarch.com")
+    )
+
+
+class _SessionUnpickler(pickle.Unpickler):
+    """Reads legacy pickle session files without importing any Python objects.
+
+    Session data is only dicts, strings and None, which need no globals, so any
+    attempt to load a class or callable means the file was tampered with.
+    """
+
+    def find_class(self, module: str, name: str):
+        raise LoginFailedException(
+            f"Refusing to load session file: it references {module}.{name}. "
+            "Delete the file and log in again."
+        )
 
 
 class MonarchMoney(object):
@@ -265,11 +290,13 @@ class MonarchMoney(object):
         headers.pop("Accept", None)
         headers.pop("Content-Type", None)
 
-        if "monarch.com" in url:
+        if _is_monarch_url(url):
             cookies = self._cookies if self._auth_mode == "cookie" else None
         else:
+            # Third-party upload targets (e.g. Cloudinary) authenticate with signed
+            # form fields; never send them Monarch credentials.
             cookies = None
-            for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken"]:
+            for key in list(MONARCH_COOKIE_HEADERS) + ["X-Csrftoken", "Authorization"]:
                 headers.pop(key, None)
         async with ClientSession(
             headers=headers, cookies=cookies, trust_env=True
@@ -5149,17 +5176,47 @@ class MonarchMoney(object):
         if self._cookies:
             session_data["cookies"] = self._cookies
 
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-        with open(filename, "wb") as fh:
-            pickle.dump(session_data, fh)
+        # The file holds live credentials, so keep it private to the current user.
+        # Sessions are stored as JSON; the .pickle default name is kept so existing
+        # session paths continue to work.
+        session_dir = os.path.dirname(filename)
+        if not os.path.isdir(session_dir):
+            os.makedirs(session_dir, mode=0o700, exist_ok=True)
+        fd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        # os.open's mode only applies to new files; tighten pre-existing ones too.
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(session_data, fh)
 
     def load_session(self, filename: Optional[str] = None) -> None:
-        """Loads auth credentials from a pickle file."""
+        """Loads auth credentials from a session file."""
         if filename is None:
             filename = self._session_file
 
         with open(filename, "rb") as fh:
-            data = pickle.load(fh)
+            raw = fh.read()
+
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError):
+            # Session files written by older versions are pickles. Read them with
+            # an unpickler that cannot import objects, so a planted file cannot
+            # execute code. They are rewritten as JSON on the next save.
+            try:
+                data = _SessionUnpickler(io.BytesIO(raw)).load()
+            except LoginFailedException:
+                raise
+            except Exception as exc:
+                raise LoginFailedException(
+                    f"Could not read session file {filename}: {exc}"
+                ) from exc
+
+        if not isinstance(data, dict):
+            raise LoginFailedException(
+                "Session file contains no valid credentials. "
+                "Re-login or use login_with_cookies()."
+            )
 
         auth_mode = data.get("auth_mode", "token")
 
