@@ -1,0 +1,21 @@
+
+            mutation Common_DeleteAccount($id: UUID!) {
+                deleteAccount(id: $id) {
+                    deleted
+                    errors {
+                    ...PayloadErrorFields
+                    __typename
+                }
+                __typename
+                }
+            }
+            fragment PayloadErrorFields on PayloadError {
+                fieldErrors {
+                    field
+                    messages
+                    __typename
+                }
+                message
+                code
+                __typename
+            }

@@ -1,0 +1,47 @@
+
+          query Web_GetHoldings($input: PortfolioInput) {
+            portfolio(input: $input) {
+              aggregateHoldings {
+                edges {
+                  node {
+                    id
+                    quantity
+                    basis
+                    totalValue
+                    securityPriceChangeDollars
+                    securityPriceChangePercent
+                    lastSyncedAt
+                    holdings {
+                      id
+                      type
+                      typeDisplay
+                      name
+                      ticker
+                      closingPrice
+                      isManual
+                      closingPriceUpdatedAt
+                      __typename
+                    }
+                    security {
+                      id
+                      name
+                      type
+                      ticker
+                      typeDisplay
+                      currentPrice
+                      currentPriceUpdatedAt
+                      closingPrice
+                      closingPriceUpdatedAt
+                      oneDayChangePercent
+                      oneDayChangeDollars
+                      __typename
+                    }
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+          }

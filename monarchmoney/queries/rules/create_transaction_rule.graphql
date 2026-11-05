@@ -1,0 +1,25 @@
+
+            mutation Common_CreateTransactionRuleMutationV2($input: CreateTransactionRuleInput!) {
+                createTransactionRuleV2(input: $input) {
+                    errors {
+                        ...PayloadErrorFields
+                        __typename
+                    }
+                    transactionRule {
+                        id
+                        __typename
+                    }
+                    __typename
+                }
+            }
+
+                fragment PayloadErrorFields on PayloadError {
+                    fieldErrors {
+                        field
+                        messages
+                        __typename
+                    }
+                    message
+                    code
+                    __typename
+                }

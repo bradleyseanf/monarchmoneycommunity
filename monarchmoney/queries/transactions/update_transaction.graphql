@@ -1,0 +1,52 @@
+
+        mutation Web_TransactionDrawerUpdateTransaction($input: UpdateTransactionMutationInput!) {
+            updateTransaction(input: $input) {
+            transaction {
+                id
+                amount
+                pending
+                date
+                hideFromReports
+                needsReview
+                reviewedAt
+                reviewedByUser {
+                id
+                name
+                __typename
+                }
+                plaidName
+                notes
+                isRecurring
+                category {
+                id
+                __typename
+                }
+                goal {
+                id
+                __typename
+                }
+                merchant {
+                id
+                name
+                __typename
+                }
+                __typename
+            }
+            errors {
+                ...PayloadErrorFields
+                __typename
+            }
+            __typename
+            }
+        }
+
+        fragment PayloadErrorFields on PayloadError {
+            fieldErrors {
+            field
+            messages
+            __typename
+            }
+            message
+            code
+            __typename
+        }

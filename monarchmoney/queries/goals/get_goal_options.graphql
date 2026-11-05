@@ -1,0 +1,12 @@
+
+            query Common_GoalOptions {
+              goalOptions {
+                defaultName
+                objective
+                type
+                allowMultiSelect
+                defaultImageStorageProvider
+                defaultImageStorageProviderId
+                __typename
+              }
+            }

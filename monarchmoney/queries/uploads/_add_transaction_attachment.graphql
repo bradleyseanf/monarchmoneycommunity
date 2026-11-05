@@ -1,0 +1,19 @@
+
+            mutation Common_AddTransactionAttachment($input: TransactionAddAttachmentMutationInput!) {
+                addTransactionAttachment(input: $input) {
+                    attachment {
+                        id
+                        publicId
+                        extension
+                        sizeBytes
+                        filename
+                        originalAssetUrl
+                        __typename
+                    }
+                    errors {
+                        message
+                        __typename
+                    }
+                    __typename
+                }
+            }

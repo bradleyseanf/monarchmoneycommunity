@@ -1,0 +1,11 @@
+
+            mutation Common_UpdateFlexBudgetMutation($input: UpdateOrCreateFlexBudgetItemMutationInput!) {
+              updateOrCreateFlexBudgetItem(input: $input) {
+                budgetItem {
+                  id
+                  budgetAmount
+                  __typename
+                }
+                __typename
+              }
+            }

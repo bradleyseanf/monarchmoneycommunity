@@ -1,0 +1,34 @@
+
+          query TransactionSplitQuery($id: UUID!) {
+            getTransaction(id: $id) {
+              id
+              amount
+              category {
+                id
+                name
+                __typename
+              }
+              merchant {
+                id
+                name
+                __typename
+              }
+              splitTransactions {
+                id
+                merchant {
+                  id
+                  name
+                  __typename
+                }
+                category {
+                  id
+                  name
+                  __typename
+                }
+                amount
+                notes
+                __typename
+              }
+              __typename
+            }
+          }

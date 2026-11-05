@@ -1,0 +1,76 @@
+
+          query GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput, $orderBy: TransactionOrdering) {
+            allTransactions(filters: $filters) {
+              totalCount
+              results(offset: $offset, limit: $limit, orderBy: $orderBy) {
+                id
+                ...TransactionOverviewFields
+                __typename
+              }
+              __typename
+            }
+            transactionRules {
+              id
+              __typename
+            }
+          }
+
+          fragment TransactionOverviewFields on Transaction {
+            id
+            ownedByUser {
+              id
+              name
+              __typename
+            }
+            ownershipOverriddenAt
+            amount
+            pending
+            date
+            hideFromReports
+            plaidName
+            notes
+            isRecurring
+            reviewStatus
+            needsReview
+            attachments {
+              id
+              extension
+              filename
+              originalAssetUrl
+              publicId
+              sizeBytes
+              __typename
+            }
+            isSplitTransaction
+            createdAt
+            updatedAt
+            category {
+              id
+              name
+              __typename
+            }
+            merchant {
+              name
+              id
+              transactionsCount
+              __typename
+            }
+            account {
+              id
+              displayName
+              __typename
+            }
+            businessEntity {
+              id
+              name
+              __typename
+            }
+            tags {
+              id
+              name
+              color
+              order
+              __typename
+            }
+            __typename
+          }

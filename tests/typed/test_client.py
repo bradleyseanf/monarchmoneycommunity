@@ -45,7 +45,7 @@ class TestMonarchMoneyTyped(unittest.IsolatedAsyncioTestCase):
 
     @classmethod
     def load_test_data(cls, filename: str) -> dict:
-        path = os.path.join(os.path.dirname(__file__), filename)
+        path = os.path.join(os.path.dirname(os.path.dirname(__file__)), filename)
         with open(path, "r") as fh:
             return json.load(fh)
 

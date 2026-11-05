@@ -1,0 +1,18 @@
+
+            mutation Common_CreateTransactionTag($input: CreateTransactionTagInput!) {
+              createTransactionTag(input: $input) {
+                tag {
+                  id
+                  name
+                  color
+                  order
+                  transactionCount
+                  __typename
+                }
+                errors {
+                  message
+                  __typename
+                }
+                __typename
+              }
+            }

@@ -1,0 +1,82 @@
+
+            query Common_SavingsGoal($id: ID!) {
+              savingsGoal(id: $id) {
+                ...GoalSummaryFields
+                __typename
+              }
+            }
+
+            fragment GoalSummaryFields on SavingsGoal {
+              id
+              type
+              name
+              createdAt
+              archivedAt
+              imageStorageProvider
+              imageStorageProviderId
+              status
+              progress
+              currentBalance
+              targetDate
+              targetAmount
+              hasFutureBudgetDifferentFromCurrentMonth
+              currentMonthActualBudgetAmount
+              currentMonthPlannedContributionAmount
+              plannedMonthlyContribution
+              spendingTotal
+              netContribution
+              netContributionWithSpending
+              netContributionWithoutSpending
+              balanceThisMonth
+              estimatedMonthsUntilCompletion
+              forecastedCompletionDate
+              isSinkingFund
+              priority
+              allocationAmountsByAccount {
+                goalId
+                adjustmentAmount
+                totalAmount
+                spendingAmount
+                contributionsAmount
+                withdrawalsAmount
+                account {
+                  icon
+                  displayName
+                  displayBalance
+                  linkedGoal {
+                    id
+                    __typename
+                  }
+                  subtype {
+                    name
+                    display
+                    __typename
+                  }
+                  ...NewAccountLogoFields
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+
+            fragment NewAccountLogoFields on Account {
+              id
+              dataProvider
+              logoUrl
+              type {
+                name
+                display
+                __typename
+              }
+              subtype {
+                name
+                __typename
+              }
+              institution {
+                id
+                primaryColor
+                __typename
+              }
+              __typename
+            }

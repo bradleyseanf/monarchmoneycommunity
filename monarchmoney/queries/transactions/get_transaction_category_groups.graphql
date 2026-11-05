@@ -1,0 +1,12 @@
+
+          query ManageGetCategoryGroups {
+              categoryGroups {
+                  id
+                  name
+                  order
+                  type
+                  updatedAt
+                  createdAt
+                  __typename
+              }
+          }

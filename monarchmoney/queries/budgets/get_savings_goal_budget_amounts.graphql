@@ -1,0 +1,25 @@
+
+            query Common_SavingsGoalBudgetAmounts($goalId: ID!, $startMonth: Date!, $endMonth: Date!) {
+              savingsGoal(id: $goalId) {
+                id
+                monthlyBudgetAmounts(startMonth: $startMonth, endMonth: $endMonth) {
+                  id
+                  month
+                  plannedAmount
+                  actualAmount
+                  remainingAmount
+                  accountBreakdown {
+                    id
+                    account {
+                      id
+                      growthRate
+                      __typename
+                    }
+                    remainingAmount
+                    __typename
+                  }
+                  __typename
+                }
+                __typename
+              }
+            }

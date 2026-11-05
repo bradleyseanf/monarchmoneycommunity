@@ -1,0 +1,8 @@
+
+          query ForceRefreshAccountsQuery {
+            accounts {
+              id
+              hasSyncInProgress
+              __typename
+            }
+          }

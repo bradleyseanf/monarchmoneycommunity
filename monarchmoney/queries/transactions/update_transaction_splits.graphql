@@ -1,0 +1,42 @@
+
+          mutation Common_SplitTransactionMutation($input: UpdateTransactionSplitMutationInput!) {
+            updateTransactionSplit(input: $input) {
+              errors {
+                ...PayloadErrorFields
+                __typename
+              }
+              transaction {
+                id
+                hasSplitTransactions
+                splitTransactions {
+                  id
+                  merchant {
+                    id
+                    name
+                    __typename
+                  }
+                  category {
+                    id
+                    name
+                    __typename
+                  }
+                  amount
+                  notes
+                  __typename
+                }
+                __typename
+              }
+              __typename
+            }
+          }
+
+          fragment PayloadErrorFields on PayloadError {
+            fieldErrors {
+              field
+              messages
+              __typename
+            }
+            message
+            code
+            __typename
+          }

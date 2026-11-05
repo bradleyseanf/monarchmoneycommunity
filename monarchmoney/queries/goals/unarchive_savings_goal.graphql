@@ -1,0 +1,16 @@
+
+            mutation Common_UnarchiveSavingsGoal($input: UnarchiveSavingsGoalInput!) {
+              unarchiveSavingsGoal(input: $input) {
+                savingsGoal {
+                  id
+                  archivedAt
+                  status
+                  __typename
+                }
+                errors {
+                  message
+                  __typename
+                }
+                __typename
+              }
+            }

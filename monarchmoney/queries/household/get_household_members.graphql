@@ -1,0 +1,11 @@
+
+          query Common_GetHouseHoldMemberSettings {
+            myHousehold {
+              users {
+                id
+                name
+                displayName
+                householdRole
+              }
+            }
+          }

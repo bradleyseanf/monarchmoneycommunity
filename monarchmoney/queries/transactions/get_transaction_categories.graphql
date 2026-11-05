@@ -1,0 +1,25 @@
+
+          query GetCategories {
+            categories {
+              ...CategoryFields
+              __typename
+            }
+          }
+
+          fragment CategoryFields on Category {
+            id
+            order
+            name
+            systemCategory
+            isSystemCategory
+            isDisabled
+            updatedAt
+            createdAt
+            group {
+              id
+              name
+              type
+              __typename
+            }
+            __typename
+          }
