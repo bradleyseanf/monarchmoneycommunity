@@ -8,6 +8,8 @@ lib/
 .DS_Store
 .mm
 .venv/
+.venv-docs/
+site/
 .vscode/
 
 __pycache__/

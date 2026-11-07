@@ -1,0 +1,49 @@
+:root {
+  --md-primary-fg-color: #252925;
+  --md-primary-fg-color--light: #3c443e;
+  --md-primary-fg-color--dark: #171c18;
+  --md-accent-fg-color: #d54d1e;
+}
+
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: #fdfcf9;
+  --md-typeset-a-color: #b53e16;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-typeset-a-color: #ffab85;
+}
+
+.md-header__button.md-logo {
+  color: #ff9867;
+}
+
+.md-typeset h1 {
+  color: var(--md-default-fg-color);
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.md-typeset .md-button {
+  border-radius: 0.35rem;
+  margin: 0.25rem 0.3rem 0.25rem 0;
+}
+
+.md-typeset .md-button--primary {
+  background: #b53e16;
+  border-color: #b53e16;
+  color: #fff;
+}
+
+.md-typeset .grid.cards > ul > li {
+  border-radius: 0.5rem;
+}
+
+.doc-object .doc-heading {
+  padding-top: 1rem;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset .doc-heading code {
+  overflow-wrap: anywhere;
+}
