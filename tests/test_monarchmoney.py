@@ -648,6 +648,65 @@ class TestDuplicateTransactions(unittest.IsolatedAsyncioTestCase):
             sent["merchantCriteria"], [{"operator": "eq", "value": "walgreens"}]
         )
         self.assertFalse(sent["applyToExistingTransactions"])
+        for field in (
+            "setMerchantAction",
+            "addTagsAction",
+            "originalStatementCriteria",
+            "merchantNameCriteria",
+        ):
+            self.assertNotIn(field, sent)
+
+    async def test_create_transaction_rule_sets_merchant_tags_and_statement(self):
+        client = MonarchMoney()
+        client.gql_call = AsyncMock(
+            return_value={
+                "createTransactionRuleV2": {
+                    "errors": None,
+                    "transactionRule": {"id": "rule-10"},
+                }
+            }
+        )
+        statement = [{"operator": "contains", "value": "hydro ottawa"}]
+        result = await client.create_transaction_rule(
+            "cat-home",
+            original_statement_criteria=statement,
+            set_merchant_name="Hydro Ottawa",
+            add_tag_ids=["tag-1", "tag-2"],
+        )
+        self.assertEqual(result, {"id": "rule-10"})
+        sent = client.gql_call.await_args.kwargs["variables"]["input"]
+        self.assertEqual(sent["setCategoryAction"], "cat-home")
+        self.assertEqual(sent["setMerchantAction"], "Hydro Ottawa")
+        self.assertEqual(sent["addTagsAction"], ["tag-1", "tag-2"])
+        self.assertEqual(sent["originalStatementCriteria"], statement)
+        self.assertNotIn("merchantNameCriteria", sent)
+
+    async def test_create_transaction_rule_allows_tag_only_rule(self):
+        client = MonarchMoney()
+        client.gql_call = AsyncMock(
+            return_value={
+                "createTransactionRuleV2": {
+                    "errors": None,
+                    "transactionRule": {"id": "rule-11"},
+                }
+            }
+        )
+        name = [{"operator": "eq", "value": "virgin plus"}]
+        await client.create_transaction_rule(
+            merchant_name_criteria=name, add_tag_ids=["tag-1"]
+        )
+        sent = client.gql_call.await_args.kwargs["variables"]["input"]
+        self.assertIsNone(sent["setCategoryAction"])
+        self.assertEqual(sent["addTagsAction"], ["tag-1"])
+        self.assertEqual(sent["merchantNameCriteria"], name)
+
+    async def test_create_transaction_rule_requires_an_action(self):
+        client = MonarchMoney()
+        client.gql_call = AsyncMock()
+        for kwargs in ({}, {"add_tag_ids": []}):
+            with self.assertRaisesRegex(ValueError, "at least one action"):
+                await client.create_transaction_rule(**kwargs)
+        client.gql_call.assert_not_awaited()
 
     def _rule(self, **overrides):
         rule = {

@@ -4734,16 +4734,23 @@ class MonarchMoney(object):
 
     async def create_transaction_rule(
         self,
-        set_category_id: str,
+        set_category_id: Optional[str] = None,
         merchant_criteria: Optional[List[Dict[str, str]]] = None,
         merchant_criteria_use_original_statement: bool = False,
         amount_criteria: Optional[Dict[str, Any]] = None,
         category_ids: Optional[List[str]] = None,
         account_ids: Optional[List[str]] = None,
         apply_to_existing_transactions: bool = False,
+        set_merchant_name: Optional[str] = None,
+        add_tag_ids: Optional[List[str]] = None,
+        original_statement_criteria: Optional[List[Dict[str, str]]] = None,
+        merchant_name_criteria: Optional[List[Dict[str, str]]] = None,
     ) -> Dict[str, Any]:
         """
-        Creates a transaction rule that recategorizes matching transactions.
+        Creates a transaction rule that updates matching transactions.
+
+        At least one action is required: ``set_category_id``,
+        ``set_merchant_name`` or ``add_tag_ids``.
 
         :param set_category_id: the category id to assign when the rule matches.
         :param merchant_criteria: list of conditions on the merchant, e.g.
@@ -4755,9 +4762,24 @@ class MonarchMoney(object):
           "value": 20, "valueRange": None}.
         :param category_ids: only match transactions currently in these categories.
         :param account_ids: only match transactions in these accounts.
-        :param apply_to_existing_transactions: also recategorize past matches.
+        :param apply_to_existing_transactions: also apply the rule to past matches.
+        :param set_merchant_name: rename matching transactions' merchant to this
+          *name* (not an id); Monarch creates the merchant if needed.
+        :param add_tag_ids: ids of tags to add to matching transactions.
+        :param original_statement_criteria: conditions on the original bank
+          statement text, same shape as ``merchant_criteria``. Newer Monarch
+          rules use this instead of ``merchant_criteria`` with
+          ``merchant_criteria_use_original_statement``.
+        :param merchant_name_criteria: conditions on the merchant name, same
+          shape as ``merchant_criteria`` (the newer form of that field).
         :return: the created rule ({"id": ...}).
+        :raises ValueError: when no action is given.
         """
+        if set_category_id is None and set_merchant_name is None and not add_tag_ids:
+            raise ValueError(
+                "create_transaction_rule needs at least one action: "
+                "set_category_id, set_merchant_name or add_tag_ids"
+            )
         query = gql(
             """
             mutation Common_CreateTransactionRuleMutationV2($input: CreateTransactionRuleInput!) {
@@ -4785,6 +4807,14 @@ class MonarchMoney(object):
             "setCategoryAction": set_category_id,
             "applyToExistingTransactions": apply_to_existing_transactions,
         }
+        # Only sent when given, so existing callers' requests are unchanged.
+        optional_fields = {
+            "setMerchantAction": set_merchant_name,
+            "addTagsAction": add_tag_ids or None,
+            "originalStatementCriteria": original_statement_criteria,
+            "merchantNameCriteria": merchant_name_criteria,
+        }
+        rule_input.update({k: v for k, v in optional_fields.items() if v is not None})
         response = await self.gql_call(
             operation="Common_CreateTransactionRuleMutationV2",
             graphql_query=query,

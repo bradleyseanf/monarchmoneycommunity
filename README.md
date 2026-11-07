@@ -381,7 +381,7 @@ Process or save each cursor page before fetching the next one. Pass the same fil
     </tr>
     <tr>
       <td><code>create_transaction_rule</code></td>
-      <td>creates a transaction rule that sets a category for transactions matching merchant, amount, category, or account criteria</td>
+      <td>creates a transaction rule for transactions matching merchant, original statement, amount, category, or account criteria. At least one action is required: <code>set_category_id</code> (str), <code>set_merchant_name</code> (str, a merchant <em>name</em>, not an id) or <code>add_tag_ids</code> (list of tag ids from <code>get_transaction_tags()</code>). Criteria: <code>merchant_criteria</code>, <code>original_statement_criteria</code> and <code>merchant_name_criteria</code> (lists of operator/value dicts), <code>amount_criteria</code> (dict), <code>category_ids</code> and <code>account_ids</code> (lists of ids). <code>apply_to_existing_transactions</code> (bool, default False) also applies the rule to past matches. Example: <code>await mm.create_transaction_rule(original_statement_criteria=[{"operator": "contains", "value": "hydro ottawa"}], add_tag_ids=["tag-1"])</code>. Returns the new rule's id in a dict. Raises <code>ValueError</code> when no action is given and <code>RequestFailedException</code> for payload errors.</td>
     </tr>
     <tr>
       <td><code>update_transaction_rule</code></td>
